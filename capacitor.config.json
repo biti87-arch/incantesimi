@@ -1,0 +1,13 @@
+{
+  "appId": "it.collana.incantesimi",
+  "appName": "Libro degli incantesimi",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

@@ -1,0 +1,753 @@
+<title>Libro degli incantesimi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral+SC:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Telefono prima di tutto: una colonna, barra delle schede in basso, pulsanti da almeno 44 px. Colori della Collana. */
+:root{
+  --bg:#FAF3E0; --surface:#FFFDF7; --surface2:#F5EDD0; --line:#E2D2A6; --ink:#1F1A12; --muted:#6B5F48;
+  --gold:#8B6914; --gold2:#D4A84B; --title:#C45911; --cond:#C00000; --adv:#1E7A1E; --mark:#FFF1C9;
+  --field:#FFFFFF; --on-gold:#FFFFFF; --xbg:#E7E1F2; --xink:#4A3C75; --nobg:#F6D7D7;
+  --f-display:"Spectral SC", Georgia, serif; --f-body:"IBM Plex Sans", system-ui, sans-serif; --f-mono:"IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){--bg:#16130E; --surface:#201B13; --surface2:#2B2419; --line:#45392A; --ink:#EDE5D3; --muted:#A99D85; --gold:#D4A84B; --gold2:#8B6914; --title:#EC915A; --cond:#FF7070; --adv:#5FBF5F; --mark:#3B3020; --field:#14110C; --on-gold:#1A140A; --xbg:#2E2840; --xink:#C9B8F0; --nobg:#3D1C1C; color-scheme:dark;} }
+:root[data-theme="dark"]{--bg:#16130E; --surface:#201B13; --surface2:#2B2419; --line:#45392A; --ink:#EDE5D3; --muted:#A99D85; --gold:#D4A84B; --gold2:#8B6914; --title:#EC915A; --cond:#FF7070; --adv:#5FBF5F; --mark:#3B3020; --field:#14110C; --on-gold:#1A140A; --xbg:#2E2840; --xink:#C9B8F0; --nobg:#3D1C1C; color-scheme:dark;}
+:root[data-theme="light"]{color-scheme:light}
+*{box-sizing:border-box}
+html,body{overflow-x:hidden}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;padding:0 12px calc(78px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:1100px;margin:0 auto;min-width:0}
+header.top{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 0 8px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:8px}
+h1{font-family:var(--f-display);font-weight:700;font-size:1.15rem;margin:0;color:var(--title);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand select{max-width:52vw}
+.riass{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;font-variant-numeric:tabular-nums}
+.pill{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:2px 9px;font-size:.78rem;white-space:nowrap}
+.pill b{color:var(--gold)}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav.tabs button{flex:1;min-height:56px;border:0;background:none;font:600 .8rem var(--f-body);color:var(--muted);border-top:3px solid transparent;cursor:pointer}
+nav.tabs button[aria-selected="true"]{color:var(--gold);border-top-color:var(--gold);background:var(--surface2)}
+section.panel{display:grid;gap:12px;padding-top:12px}
+h2{font-family:var(--f-display);font-weight:500;font-size:1.05rem;margin:0 0 8px;color:var(--title)}
+h3{font-size:.95rem;margin:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;min-width:0}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row>.grow{flex:1;min-width:0}
+.muted{color:var(--muted);font-size:.85rem}
+.small{font-size:.8rem}
+label.f{display:grid;gap:3px;font-size:.78rem;color:var(--muted);min-width:0}
+input,select,textarea{font:inherit;font-size:16px;min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--field);color:var(--ink);min-width:0;width:100%}
+textarea{min-height:120px}
+input[type=checkbox]{width:22px;height:22px;min-height:0;accent-color:var(--gold)}
+button{font:600 .9rem var(--f-body);min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--gold);background:var(--surface);color:var(--gold);cursor:pointer}
+button.pri{background:var(--gold);color:var(--on-gold)}
+button.warn{border-color:var(--cond);color:var(--cond)}
+button.mini{min-height:36px;padding:4px 10px;font-size:.8rem}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--title);outline-offset:2px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.lvl{border-top:1px solid var(--line);padding-top:8px;margin-top:8px}
+.lvl:first-of-type{border-top:0;margin-top:0;padding-top:0}
+.lvlh{display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap}
+.dots{display:flex;gap:6px;flex-wrap:wrap}
+.dot{width:30px;height:30px;min-height:0;padding:0;border-radius:50%;border:2px solid var(--gold);background:var(--gold)}
+.dot.usato{background:transparent}
+ul.inc{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:4px}
+ul.inc li{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--field);min-height:44px}
+ul.inc li .n{flex:1;min-width:0;cursor:pointer}
+ul.inc li .n:hover{text-decoration:underline}
+.tag{font-size:.7rem;font-weight:600;border-radius:4px;padding:1px 5px;background:var(--surface2);color:var(--gold);white-space:nowrap}
+.tag.r{background:var(--gold);color:var(--on-gold)}
+.tag.x{background:var(--xbg);color:var(--xink)}
+.tag.no{background:var(--nobg);color:var(--cond)}
+.avviso{background:var(--mark);border:1px solid var(--gold2);border-radius:8px;padding:8px 10px;font-size:.88rem}
+.cond{color:var(--cond);font-weight:600}
+.calc{background:var(--gold);color:var(--on-gold);border-radius:4px;padding:0 5px;margin-left:4px;font-weight:600;white-space:nowrap}
+.fx{background:var(--mark);border-radius:3px}
+dialog{border:0;padding:0;width:min(760px,100vw);max-width:100vw;max-height:100dvh;border-radius:12px;background:var(--surface);color:var(--ink)}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+@media (max-width:700px){dialog{width:100vw;height:100dvh;max-height:100dvh;border-radius:0;margin:0}}
+.dlg{display:flex;flex-direction:column;height:100%;max-height:100dvh}
+.dlgh{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--surface2)}
+.dlgh h2{margin:0;flex:1;min-width:0}
+.dlgb{padding:12px;overflow:auto;flex:1;display:grid;gap:10px;align-content:start}
+.campi{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:.9rem}
+.campi dt{color:var(--muted)}
+.campi dd{margin:0;min-width:0}
+.desc p{margin:0 0 8px}
+.desc p.mod{border-left:3px solid var(--title);padding-left:8px;font-size:.88rem}
+.desc table{border-collapse:collapse;font-size:.82rem;width:100%}
+.desc td{border:1px solid var(--line);padding:3px 5px;vertical-align:top}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:8px;z-index:20;max-width:92vw;font-size:.9rem}
+.big{font-family:var(--f-mono);font-size:1.6rem;font-weight:500;color:var(--gold)}
+.list-pick li{cursor:pointer}
+.num{font-family:var(--f-mono);color:var(--muted);font-size:.8rem;min-width:2.2em;text-align:right}
+@media (min-width:900px){
+  body{padding-bottom:20px}
+  nav.tabs{position:sticky;top:0;bottom:auto;margin-top:8px;border:1px solid var(--line);border-radius:10px}
+  section.panel.due{grid-template-columns:1fr 1fr;align-items:start}
+}
+</style>
+<div class="wrap">
+<header class="top">
+  <div class="brand"><h1>Libro degli incantesimi</h1><button class="mini" id="bTema" aria-label="Tema"></button><select id="selPg" aria-label="Personaggio"></select></div>
+  <div class="riass" id="riass"></div>
+</header>
+<main id="main"></main>
+<nav class="tabs" role="tablist">
+  <button data-tab="pg" role="tab">Personaggio</button>
+  <button data-tab="oggi" role="tab">Oggi</button>
+  <button data-tab="libro" role="tab">Libro</button>
+  <button data-tab="oggetti" role="tab">Oggetti</button>
+</nav>
+</div>
+<dialog id="dlg"><div class="dlg"><div class="dlgh"><h2 id="dlgT"></h2><button class="mini" id="dlgX">Chiudi</button></div><div class="dlgb" id="dlgB"></div></div></dialog>
+<script>
+const DATI = __DATI__;
+__MOTORE__
+Motore.imposta(DATI);
+const M = Motore, SC = DATI.schede;
+const CHIAVE = 'libro-incantesimi-v1';
+const $ = (s, r) => (r || document).querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const uid = () => Math.random().toString(36).slice(2, 9);
+const CAR = { Int: 'Intelligenza', Sag: 'Saggezza', Car: 'Carisma' };
+const SCUOLE = [...new Set(SC.map(s => s.scuola))].sort();
+const DESCR = [...new Set(SC.flatMap(s => s.descr))].sort();
+const COND = 'Azzoppat[oaie]|Colt[oaie] alla sprovvista|Offuscat[oaie]|Affaticat[oaie]|Abbagliat[oaie]|Accecat[oaie]|Accovacciat[oaie]|Affascinat[oaie]|Assordat[oaie]|Barcollant[ei]|Confus[oaie]|Esaust[oaie]|Frastornat[oaie]|Immobilizzat[oaie]|Impreparat[oaie]|In Lotta|Inabil[ei]|Incorpore[oaie]|Indifes[oaie]|Inferm[oaie]|Intralciat[oaie]|Invisibil[ei]|Mort[oaie]|Nauseat[oaie]|Paralizzat[oaie]|Scoss[oaie]|Spaventat[oaie]|In Preda al Panico|Pietrificat[oaie]|Priv[oaie] di Sensi|Pron[oaie]|Sanguinant[ei]|Stabilizzat[oaie]|Stordit[oaie]';
+const RE_COND = new RegExp('\\b(' + COND + ')\\b', 'g');
+
+// ---------------------------------------------------------------- stato
+let ST;
+function nuovoPg(nome) {
+  return { id: uid(), nome: nome || 'Nuovo personaggio', ucm: 0, note: '', ci: 0,
+    classi: [nuovaClasse('Stregone')], bonus: [], meta: [], pergamene: [], bacchette: [], attivi: [], reag: {}, annulla: null };
+}
+function nuovaClasse(c) { return { classe: c, livello: 1, car: DATI.classi[c].car[0], punteggio: 16, con: [], prep: {}, usati: {}, sup: 0, sost: {} }; }
+function carica() {
+  try { ST = JSON.parse(localStorage.getItem(CHIAVE)); } catch (e) { ST = null; }
+  if (!ST || !ST.pg || !ST.pg.length) { const p = nuovoPg('Nuovo personaggio'); ST = { v: 1, attivo: p.id, pg: [p], tab: 'pg' }; }
+}
+function salva() { try { localStorage.setItem(CHIAVE, JSON.stringify(ST)); } catch (e) { toast('Salvataggio non riuscito: ' + e.message); } }
+const PG = () => ST.pg.find(p => p.id === ST.attivo) || ST.pg[0];
+const CLS = (pg) => (pg = pg || PG()).classi[Math.min(pg.ci || 0, pg.classi.length - 1)];
+const ctxDi = (pg, cl) => ({ classe: cl.classe, livello: cl.livello, punteggio: cl.punteggio, bonus: pg.bonus.filter(b => !b.classe || b.classe === cl.classe) });
+
+// ---------------------------------------------------------------- utilità sugli incantesimi
+const keyCon = c => c.s + '|' + (c.v || '');
+const nomeCon = c => c.v || SC[c.s].n;
+// livello di un incantesimo nella lista di una classe (variante compresa) o null
+function livelloLista(classe, s, v) {
+  const L = DATI.liste[classe] || {};
+  for (const l in L) if (L[l].some(x => Array.isArray(x) ? (x[0] === s && x[1] === v) : (x === s && !v))) return +l;
+  return null;
+}
+// tutti i livelli di una scheda (per gli extra e gli oggetti): [{classe, L, v}]
+function livelliScheda(s) {
+  const out = [];
+  const sc = SC[s];
+  for (const c in sc.lv) out.push({ classe: c, L: sc.lv[c] });
+  for (const v of sc.var || []) for (const c in v.lv) out.push({ classe: c, L: v.lv[c], v: v.n });
+  return out;
+}
+const minLivello = s => { const l = livelliScheda(s).map(x => x.L); return l.length ? Math.min(...l) : 1; };
+function numeroLista(classe, L, s, v) {
+  const arr = (DATI.liste[classe] || {})[L] || [];
+  return arr.findIndex(x => Array.isArray(x) ? (x[0] === s && x[1] === v) : (x === s && !v)) + 1;
+}
+
+// ---------------------------------------------------------------- interfaccia generale
+function toast(t, ms) {
+  const d = document.createElement('div'); d.className = 'toast'; d.innerHTML = t; document.body.appendChild(d);
+  setTimeout(() => d.remove(), ms || 2600);
+}
+const dlg = $('#dlg');
+function apri(titolo, html, dopo) { $('#dlgT').textContent = titolo; $('#dlgB').innerHTML = html; if (!dlg.open) dlg.showModal(); $('#dlgB').scrollTop = 0; if (dopo) dopo($('#dlgB')); }
+function chiudi() { if (dlg.open) dlg.close(); }
+function chiedi(titolo, testo, si) {
+  apri(titolo, `<p>${testo}</p><div class="row"><button class="pri" id="cSi">Conferma</button><button id="cNo">Annulla</button></div>`, x => { $('#cSi', x).onclick = () => { chiudi(); si(); }; $('#cNo', x).onclick = chiudi; });
+}
+$('#dlgX').onclick = chiudi;
+
+function riassunto() {
+  const pg = PG(), cl = CLS(pg), ctx = ctxDi(pg, cl);
+  const mod = M.modCar(cl.punteggio);
+  $('#riass').innerHTML = `<span class="pill">${esc(cl.classe)} <b>${cl.livello}</b></span>` +
+    `<span class="pill">LI <b>${M.LI(ctx, null)}</b></span>` +
+    `<span class="pill">CD base <b>${10 + mod + M.somma(ctx.bonus, 'cd', null, cl.classe)}</b>+liv.</span>` +
+    `<span class="pill">Conc. <b>+${M.concentrazione(ctx, null, false)}</b>` + (M.concentrazione(ctx, null, true) !== M.concentrazione(ctx, null, false) ? ` (dif. +${M.concentrazione(ctx, null, true)})` : '') + `</span>` +
+    `<span class="pill">RI <b>+${M.RI(ctx, null)}</b></span>` +
+    (pg.classi.length > 1 ? `<button class="mini" id="cambiaCl">Classe: ${esc(cl.classe)} ⇄</button>` : '');
+  const b = $('#cambiaCl'); if (b) b.onclick = () => { pg.ci = (pg.ci + 1) % pg.classi.length; salva(); disegna(); };
+  $('#selPg').innerHTML = ST.pg.map(p => `<option value="${p.id}" ${p.id === pg.id ? 'selected' : ''}>${esc(p.nome)}</option>`).join('');
+}
+const TEMI = { auto: 'Tema: auto', light: 'Tema: chiaro', dark: 'Tema: scuro' };
+function applicaTema() { const t = ST.tema || 'auto'; if (t === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t; $('#bTema').textContent = { auto: '◐', light: '☀', dark: '☾' }[t]; $('#bTema').title = TEMI[t]; }
+$('#bTema').onclick = () => { ST.tema = { auto: 'light', light: 'dark', dark: 'auto' }[ST.tema || 'auto']; salva(); applicaTema(); toast(TEMI[ST.tema]); };
+$('#selPg').onchange = e => { ST.attivo = e.target.value; salva(); disegna(); };
+document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => { ST.tab = b.dataset.tab; salva(); disegna(); window.scrollTo(0, 0); });
+
+function disegna() {
+  riassunto();
+  document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === ST.tab));
+  ({ pg: tabPg, oggi: tabOggi, libro: tabLibro, oggetti: tabOggetti }[ST.tab] || tabPg)();
+}
+
+// ---------------------------------------------------------------- scheda di un incantesimo
+// opz: {s, v, cl, L, liOgg, cdOgg, lancio:true, oggetto}
+function htmlTesto(t, forms, li, meta) {
+  let out = '', last = 0;
+  for (const f of (forms || []).slice().sort((a, b) => a.i - b.i)) {
+    if (f.i < last) continue;
+    const r = M.formula(f, li, /dann/i.test(t.slice(f.i, f.j)) ? meta : Object.assign({}, meta, { danni: null }));
+    out += colora(esc(t.slice(last, f.i))) + `<span class="fx">${esc(t.slice(f.i, f.j))}</span><span class="calc" data-tira="${esc(r)}">${esc(r)}</span>`;
+    last = f.j;
+  }
+  return out + colora(esc(t.slice(last)));
+}
+const colora = h => h.replace(RE_COND, '<span class="cond">$1</span>');
+function htmlDesc(s, li, meta) {
+  let h = '', tab = null, riga = null;
+  const chiudiTab = () => { if (tab) { h += '<table>' + tab + '</tr></table>'; tab = null; riga = null; } };
+  for (const p of s.desc) {
+    if (p.c != null) {
+      if (tab === null) { tab = '<tr>'; riga = p.c; }
+      else if (p.c !== riga) { tab += '</tr><tr>'; riga = p.c; }
+      tab += '<td>' + htmlTesto(p.t, p.f, li, meta) + '</td>';
+      continue;
+    }
+    chiudiTab();
+    h += `<p class="${p.m ? 'mod' : ''}">${p.l ? '• ' : ''}${htmlTesto(p.t, p.f, li, meta)}</p>`;
+  }
+  chiudiTab();
+  return h;
+}
+function apriScheda(o) {
+  const pg = PG(), cl = o.cl || CLS(pg), ctx = ctxDi(pg, cl), s = SC[o.s];
+  const L = o.L != null ? o.L : (livelloLista(cl.classe, o.s, o.v) ?? minLivello(o.s));
+  const stato = { meta: {}, intens: null, slotScelto: null };
+  const disegnaScheda = () => {
+    const tal = talentiScelti(pg, stato);
+    const bd = b => ctx.bonus.filter(x => x.ambito === 'danni' && (x.modo === 'dado') === b && M.siApplica(x, s, cl.classe)).reduce((a, x) => a + (+x.valore || 0), 0);
+    const metaF = { potenziati: tal.some(t => t.eff === 'potenziati'), massimizzati: tal.some(t => t.eff === 'massimizzati'), intensi: tal.some(t => t.eff === 'intensi'), danni: o.oggetto ? null : { fissi: bd(false), dado: bd(true) } };
+    const li = o.liOgg != null ? o.liOgg : M.LI(ctx, s);
+    const Lcd = tal.some(t => t.eff === 'intensificati') && stato.intens ? stato.intens : L;
+    const cd = o.cdOgg != null ? o.cdOgg : M.CD(ctx, s, Lcd);
+    const fR = tal.some(t => t.eff === 'ingranditi') ? 2 : 1, fD = tal.some(t => t.eff === 'estesi') ? 2 : 1;
+    let rTesto = s.r || '';
+    const port = tal.find(t => t.eff === 'portata');
+    if (port && M.gradino(s.r) >= 0) { const g = Math.min(3, M.gradino(s.r) + (stato.portata || 1)); rTesto = M.GRADINI[g] + (M.RAGGI_STD[M.GRADINI[g]] ? ' (' + M.RAGGI_STD[M.GRADINI[g]] + ')' : ''); }
+    const rCalc = M.raggio(rTesto, li, fR);
+    const dur = M.durata(s.d || '', li, fD);
+    let tl = s.tl, comp = s.c || '';
+    if (tal.some(t => t.eff === 'rapidi')) tl = '1 azione veloce (Rapidi)';
+    if (tal.some(t => t.eff === 'silenziosi')) comp = comp.replace(/\bV,?\s*/, '') + ' (Silenziosi: niente V)';
+    if (tal.some(t => t.eff === 'immobili')) comp = comp.replace(/\bS,?\s*/, '') + ' (Immobili: niente S)';
+    const reag = M.reagente(s.reag);
+    const ts = s.ts ? s.ts + (/nessuno/i.test(s.ts) ? '' : ` — <b>CD ${cd}</b>`) : '';
+    const ri = s.ri ? s.ri + (/sì/i.test(s.ri) ? ` — prova <b>+${M.RI(ctx, s, li) - (tal.some(t => t.eff === 'penetranti') ? 0 : 0)}</b>${tal.some(t => t.eff === 'penetranti') ? ' (RI del bersaglio −5)' : ''}` : '') : '';
+    const camp = [['Scuola', esc(s.s)], ['Livello', esc(s.l || '—') + (s.cd ? '<br>Concesso da: ' + esc(s.cd) : '')],
+      ['Tempo di lancio', esc(tl)], ['Componenti', esc(comp) + (reag ? ` <span class="tag">${reag.per === 'lancio' ? 'reagente ' + reag.costo + ' mo a ogni lancio' : 'reagente: ' + reag.usi + ' al ' + reag.per}</span>` : '')],
+      s.r ? ['Raggio d’azione', esc(rTesto) + (rCalc ? `<span class="calc">${esc(rCalc)}</span>` : '')] : null,
+      s.b ? ['Bersaglio', esc(s.b)] : null, s.a ? ['Area', esc(s.a) + (tal.some(t => t.eff === 'ampliati') ? ' <span class="calc">area ×2</span>' : '')] : null, s.e ? ['Effetto', esc(s.e)] : null,
+      ['Durata', esc(s.d) + (dur.cambiata || fD > 1 ? `<span class="calc">${esc(dur.testo)}</span>` : '')],
+      ts ? ['Tiro Salvezza', ts] : null, ri ? ['Resistenza agli incantesimi', ri] : null,
+      ['Livello di incantatore', `<b>${li}</b>` + (o.oggetto ? ' (oggetto)' : '')]].filter(Boolean);
+    let h = '';
+    if (s.mod) h += '<div class="muted small">◆ Incantesimo modificato nella Collana</div>';
+    h += `<dl class="campi">${camp.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('')}</dl>`;
+    if (o.lancio) h += htmlLancio(pg, cl, ctx, s, o, L, stato, tal);
+    if (tal.length) h += `<div class="avviso">${tal.map(t => `<b>${esc(t.n)}</b>${t.inc != null ? ' (+' + t.inc + ')' : ''}: ${esc(t.nota || t.intro || '')}`).join('<br>')}</div>`;
+    h += `<div class="desc">${htmlDesc(s, li, metaF)}</div>`;
+    h += `<div class="muted small">Tocca un valore evidenziato con i dadi per tirarlo.</div>`;
+    apri((o.v ? o.v : s.n) + (L != null ? ` · ${L}°` : ''), h, b => {
+      b.querySelectorAll('[data-tira]').forEach(x => { if (/^\d+d\d+/.test(x.dataset.tira)) { x.style.cursor = 'pointer'; x.onclick = () => { const r = M.tira(x.dataset.tira); if (r) toast(`${esc(x.dataset.tira)}: <b>${r.tot}</b> (${r.tiri.join(', ')})`, 4000); }; } });
+      b.querySelectorAll('[data-meta]').forEach(x => x.onchange = () => { stato.meta[x.dataset.meta] = x.checked; stato.slotScelto = null; disegnaScheda(); });
+      const ii = b.querySelector('#intens'); if (ii) ii.onchange = () => { stato.intens = +ii.value; stato.slotScelto = null; disegnaScheda(); };
+      const pp = b.querySelector('#portata'); if (pp) pp.onchange = () => { stato.portata = +pp.value; disegnaScheda(); };
+      const ss = b.querySelector('#slotSc'); if (ss) ss.onchange = () => { stato.slotScelto = +ss.value; disegnaScheda(); };
+      const bl = b.querySelector('#bLancia'); if (bl) bl.onclick = () => lancia(pg, cl, ctx, s, o, L, stato, false);
+      const bn = b.querySelector('#bNonPrep'); if (bn) bn.onclick = () => lancia(pg, cl, ctx, s, o, L, stato, true);
+      const tc = b.querySelector('#tiraConc'); if (tc) tc.onclick = () => { const r = M.tira('1d20'); toast(`Concentrazione: 1d20 (${r.tot}) + ${tc.dataset.b} = <b>${r.tot + +tc.dataset.b}</b>`, 4000); };
+      const tr = b.querySelector('#tiraRI'); if (tr) tr.onclick = () => { const r = M.tira('1d20'); toast(`Superare la RI: 1d20 (${r.tot}) + ${tr.dataset.b} = <b>${r.tot + +tr.dataset.b}</b>`, 4000); };
+    });
+  };
+  disegnaScheda();
+}
+function talentiScelti(pg, stato) { return DATI.metamagia.filter(t => stato.meta[t.n]); }
+const preparato = (cl, c, L) => L === 0 || (cl.prep[L] || []).includes(keyCon(c));
+const liberi = cl => { const tot = M.slot(cl.classe, cl.livello, cl.punteggio, extraSlot(PG(), cl)); const o = {}; for (const L in tot) if (tot[L] != null) o[L] = Math.max(0, tot[L] - (cl.usati[L] || 0)); return o; };
+const extraSlot = (pg, cl) => { const o = {}; for (const b of pg.bonus) if (b.ambito === 'slot' && b.attivo !== false && (!b.classe || b.classe === cl.classe)) o[b.L] = (o[b.L] || 0) + (+b.valore || 0); return o; };
+const extraCon = (pg, cl) => { const o = {}; for (const b of pg.bonus) if (b.ambito === 'con' && b.attivo !== false && (!b.classe || b.classe === cl.classe)) o[b.L] = (o[b.L] || 0) + (+b.valore || 0); return o; };
+
+function htmlLancio(pg, cl, ctx, s, o, L, stato, tal) {
+  const c = { s: o.s, v: o.v };
+  const prep = preparato(cl, c, L);
+  const lib = liberi(cl);
+  const usiSup = M.usiSlotSuperiore(cl.punteggio);
+  let h = '<div class="card" style="background:var(--surface2)"><h3>Lancio</h3>';
+  if (!M.requisito(cl.punteggio, L)) return h + `<p class="cond">Punteggio troppo basso: serve ${10 + L} per lanciare un incantesimo di ${L}° livello.</p></div>`;
+  if (prep && L > 0) {
+    const poss = DATI.metamagia.filter(t => pg.meta.includes(t.n) && M.compatibile(t, s));
+    if (poss.length) {
+      h += '<div class="small muted" style="margin-top:6px">Metamagia (solo preparati)</div><div style="display:grid;gap:4px">';
+      for (const t of poss) {
+        const inc = t.eff === 'intensificati' ? '' : ` → slot ${M.incrementi([...tal.filter(x => x.n !== t.n), t], s, ctx, stato.intens, L)}°`;
+        h += `<label class="row"><input type="checkbox" data-meta="${esc(t.n)}" ${stato.meta[t.n] ? 'checked' : ''}><span class="grow">${esc(t.n)} <span class="muted small">${t.inc == null ? (t.eff === 'intensificati' ? 'livello a scelta' : 'incremento da definire') : '+' + t.inc}${inc}</span></span></label>`;
+      }
+      h += '</div>';
+      if (tal.some(t => t.eff === 'intensificati')) h += `<label class="f">Intensificato al livello<select id="intens">${[...Array(10).keys()].filter(x => x > L && x <= M.maxLivello(cl.classe)).map(x => `<option ${stato.intens === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>`;
+      if (tal.some(t => t.eff === 'portata')) h += `<label class="f">Gradini di portata<select id="portata">${[1, 2, 3].map(x => `<option ${(stato.portata || 1) === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>`;
+      if (tal.some(t => t.eff === 'intensificati') && !stato.intens) stato.intens = Math.min(L + 1, M.maxLivello(cl.classe));
+    }
+  }
+  const nec = M.incrementi(tal, s, ctx, stato.intens, L);
+  const porta = tal.find(t => t.eff === 'portata');
+  const necTot = nec + (porta ? (stato.portata || 1) - 1 : 0);
+  const opz = Object.keys(lib).map(Number).filter(l => l >= necTot && lib[l] > 0).sort((a, b) => a - b);
+  if (stato.slotScelto == null || !opz.includes(stato.slotScelto)) stato.slotScelto = opz[0];
+  const sup = stato.slotScelto != null && stato.slotScelto > necTot;
+  h += `<div class="row" style="margin-top:8px"><label class="f grow">Slot da usare${necTot > 9 ? ' <span class="cond">oltre il 9°: non si lancia</span>' : ''}<select id="slotSc">${opz.map(l => `<option value="${l}" ${l === stato.slotScelto ? 'selected' : ''}>${l}° (liberi ${lib[l]})${l > necTot ? ' · slot superiore' : ''}</option>`).join('') || `<option>nessuno slot libero del ${necTot}° o superiore</option>`}</select></label></div>`;
+  if (sup) h += `<div class="small ${cl.sup >= usiSup ? 'cond' : 'muted'}">Slot superiore: usi oggi ${cl.sup}/${usiSup}. La CD resta quella del ${L}° livello.</div>`;
+  const reag = M.reagente(s.reag);
+  if (reag) { const r = pg.reag[s.k] || 0; h += `<div class="small ${reag.per !== 'lancio' && r >= reag.usi ? 'cond' : 'muted'}">Reagente (${s.reag} mo): ${reag.per === 'lancio' ? 'il prezzo si paga a ogni lancio' : `usi gratuiti ${Math.max(0, reag.usi - r)}/${reag.usi} al ${reag.per}`}</div>`; }
+  const okL = stato.slotScelto != null && necTot <= 9 && (!sup || cl.sup < usiSup) && (prep || L === 0);
+  h += `<div class="row" style="margin-top:8px">` + (prep || L === 0 ? `<button class="pri grow" id="bLancia" ${okL ? '' : 'disabled'}>Lancia</button>` : '');
+  if (!prep && L > 0) {
+    const due = M.slotDaSpendere(lib, L, 2);
+    h += `<button class="pri grow" id="bNonPrep" ${due ? '' : 'disabled'}>Non preparato: 2 slot${due ? ' (' + due.join('°, ') + '°)' : ''}</button>`;
+  }
+  h += '</div>';
+  const cb = M.concentrazione(ctx, s, false), cbd = M.concentrazione(ctx, s, true);
+  h += `<div class="row small" style="margin-top:6px"><button class="mini" id="tiraConc" data-b="${cb}">Concentrazione +${cb}</button>` + (cbd !== cb ? `<span class="muted">sulla difensiva +${cbd} (CD ${15 + 2 * L})</span>` : `<span class="muted">sulla difensiva CD ${15 + 2 * L}</span>`) +
+    (/sì/i.test(s.ri || '') ? `<button class="mini" id="tiraRI" data-b="${M.RI(ctx, s)}">RI +${M.RI(ctx, s)}</button>` : '') + '</div>';
+  return h + '</div>';
+}
+function lancia(pg, cl, ctx, s, o, L, stato, nonPrep) {
+  pg.annulla = JSON.stringify(pg);
+  const tal = nonPrep ? [] : talentiScelti(pg, stato);
+  if (nonPrep) {
+    const due = M.slotDaSpendere(liberi(cl), L, 2);
+    if (!due) return;
+    for (const l of due) cl.usati[l] = (cl.usati[l] || 0) + 1;
+  } else if (L === 0 && !preparato(cl, { s: o.s, v: o.v }, L)) {
+    return;
+  } else {
+    const l = stato.slotScelto;
+    cl.usati[l] = (cl.usati[l] || 0) + 1;
+    const nec = M.incrementi(tal, s, ctx, stato.intens, L) + (tal.find(t => t.eff === 'portata') ? (stato.portata || 1) - 1 : 0);
+    if (l > nec) cl.sup++;
+  }
+  const reag = M.reagente(s.reag);
+  if (reag && reag.per !== 'lancio') pg.reag[s.k] = (pg.reag[s.k] || 0) + 1;
+  const li = M.LI(ctx, s);
+  const fD = tal.some(t => t.eff === 'estesi') ? 2 : 1;
+  const round = M.durataRound(s.d || '', li, fD);
+  const conc = M.concentrazioneDurata(s.d);
+  if (round != null || conc) pg.attivi.push({ id: uid(), n: o.v || s.n, s: o.s, round, tot: round, conc, I: M.interrompibile(s.d) });
+  salva(); chiudi(); disegna();
+  toast(`Lanciato: <b>${esc(o.v || s.n)}</b>${nonPrep ? ' (2 slot)' : ''}${tal.length ? ' · ' + tal.map(t => esc(t.n.replace('Incantesimi ', ''))).join(', ') : ''}`);
+}
+
+// ---------------------------------------------------------------- scheda «Personaggio»
+function tabPg() {
+  const pg = PG();
+  let h = `<section class="panel due"><div style="display:grid;gap:12px">`;
+  h += `<div class="card"><h2>Personaggio</h2><div class="grid2"><label class="f">Nome<input id="pNome" value="${esc(pg.nome)}"></label><label class="f">Utilizzare congegni magici (bonus totale)<input id="pUcm" type="number" inputmode="numeric" value="${pg.ucm}"></label></div>
+    <label class="f" style="margin-top:8px">Note<textarea id="pNote" style="min-height:60px">${esc(pg.note)}</textarea></label>
+    <div class="row" style="margin-top:8px"><button id="bNuovo">Nuovo</button><button id="bBackup">Esporta / importa</button><button class="warn" id="bElimina">Elimina</button></div></div>`;
+  pg.classi.forEach((cl, i) => { h += cardClasse(pg, cl, i); });
+  if (pg.classi.length < 2) h += `<button id="bSeconda">+ Seconda classe incantatrice</button>`;
+  h += `</div><div style="display:grid;gap:12px">${cardBonus(pg)}${cardMeta(pg)}</div></section>`;
+  $('#main').innerHTML = h;
+  $('#pNome').onchange = e => { pg.nome = e.target.value || 'Senza nome'; salva(); riassunto(); };
+  $('#pUcm').onchange = e => { pg.ucm = +e.target.value || 0; salva(); };
+  $('#pNote').onchange = e => { pg.note = e.target.value; salva(); };
+  $('#bNuovo').onclick = () => { const p = nuovoPg(); ST.pg.push(p); ST.attivo = p.id; salva(); disegna(); };
+  $('#bElimina').onclick = () => chiedi('Elimina', `Eliminare ${esc(pg.nome)}? Non si può annullare.`, () => { ST.pg = ST.pg.filter(p => p !== pg); if (!ST.pg.length) ST.pg.push(nuovoPg()); ST.attivo = ST.pg[0].id; salva(); disegna(); });
+  $('#bBackup').onclick = backup;
+  const bs = $('#bSeconda'); if (bs) bs.onclick = () => { pg.classi.push(nuovaClasse('Sacerdote')); salva(); disegna(); };
+  pg.classi.forEach((cl, i) => legaClasse(pg, cl, i));
+  legaBonus(pg); legaMeta(pg);
+}
+function cardClasse(pg, cl, i) {
+  const d = DATI.classi[cl.classe];
+  const con = M.conosciuti(cl.classe, cl.livello, extraCon(pg, cl));
+  let h = `<div class="card" data-cl="${i}"><h2>${esc(cl.classe)} ${cl.livello}°</h2>
+   <div class="grid2"><label class="f">Classe<select data-k="classe">${Object.keys(DATI.classi).map(c => `<option ${c === cl.classe ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
+   <label class="f">Livello<select data-k="livello">${[...Array(20).keys()].map(x => `<option ${x + 1 === cl.livello ? 'selected' : ''}>${x + 1}</option>`).join('')}</select></label>
+   <label class="f">Caratteristica<select data-k="car">${Object.keys(CAR).map(c => `<option value="${c}" ${c === cl.car ? 'selected' : ''}>${CAR[c]}${d.car.includes(c) ? '' : ' (archetipo)'}</option>`).join('')}</select></label>
+   <label class="f">Punteggio (mod. ${M.modCar(cl.punteggio) >= 0 ? '+' : ''}${M.modCar(cl.punteggio)})<input type="number" inputmode="numeric" min="1" max="45" data-k="punteggio" value="${cl.punteggio}"></label></div>`;
+  if (i > 0) h += `<button class="mini warn" data-togli style="margin-top:8px">Togli questa classe</button>`;
+  if (M.livelloSostituzione(cl.classe, cl.livello) && !cl.sost[cl.livello]) h += `<div class="avviso" style="margin-top:8px">Al ${cl.livello}° livello puoi sostituire un conosciuto con uno nuovo dello stesso livello (mai una R). <button class="mini" data-sost>Fatto</button></div>`;
+  h += '<h3 style="margin-top:12px">Incantesimi conosciuti</h3>';
+  for (const L of M.livelliMagia(cl.classe)) {
+    const t = con[L];
+    const mie = cl.con.filter(c => c.L === L);
+    if (!t && !mie.length) continue;
+    const norm = mie.filter(c => !c.r && !c.x).length, r = mie.filter(c => c.r).length, x = mie.filter(c => c.x).length;
+    const nNorm = t ? t.n - t.r : 0, nR = t ? t.r : 0;
+    const req = M.requisito(cl.punteggio, L);
+    h += `<div class="lvl"><div class="lvlh"><b>${L === 0 ? 'Livello 0' : L + '° livello'}</b><span class="small ${norm + r > (t ? t.n : 0) ? 'cond' : 'muted'}">${norm + r}/${t ? t.n : 0}${nR ? ` (${r}/${nR} R)` : ''}${x ? ` · ${x} extra` : ''}${req ? '' : ' · <span class="cond">serve ' + (10 + L) + '</span>'}</span></div>`;
+    h += `<ul class="inc">${mie.map(c => `<li><span class="n" data-vedi="${esc(keyCon(c))}" data-l="${L}">${esc(nomeCon(c))}</span>${c.r ? '<span class="tag r">R</span>' : ''}${c.x ? `<span class="tag x" title="${esc(c.fonte || '')}">extra</span>` : ''}<button class="mini" data-togli-inc="${esc(keyCon(c))}" aria-label="Togli">✕</button></li>`).join('')}</ul>`;
+    h += `<div class="row" style="margin-top:6px">${norm < nNorm ? `<button class="mini" data-agg="${L}">+ Dalla lista</button>` : ''}${nR && r < nR ? `<button class="mini" data-tirar="${L}" ${norm < nNorm ? 'disabled title="Prima i conosciuti normali"' : ''}>Tira la R</button><button class="mini" data-rmano="${L}">R a mano</button>` : ''}<button class="mini" data-extra="${L}">+ Extra</button></div></div>`;
+  }
+  return h + '</div>';
+}
+function legaClasse(pg, cl, i) {
+  const r = document.querySelector(`[data-cl="${i}"]`);
+  r.querySelectorAll('[data-k]').forEach(e => e.onchange = () => {
+    const k = e.dataset.k;
+    if (k === 'classe') { const n = nuovaClasse(e.value); n.livello = cl.livello; n.punteggio = cl.punteggio; pg.classi[i] = n; }
+    else if (k === 'car') cl.car = e.value;
+    else cl[k] = Math.max(1, Math.min(k === 'livello' ? 20 : 45, +e.value || 1));
+    salva(); disegna();
+  });
+  const t = r.querySelector('[data-togli]'); if (t) t.onclick = () => { pg.classi.splice(i, 1); pg.ci = 0; salva(); disegna(); };
+  const so = r.querySelector('[data-sost]'); if (so) so.onclick = () => { cl.sost[cl.livello] = true; salva(); disegna(); };
+  r.querySelectorAll('[data-vedi]').forEach(e => e.onclick = () => { const [s, v] = e.dataset.vedi.split('|'); apriScheda({ s: +s, v: v || undefined, cl, L: +e.dataset.l }); });
+  r.querySelectorAll('[data-togli-inc]').forEach(e => e.onclick = () => { const k = e.dataset.togliInc; const c = cl.con.find(c => keyCon(c) === k); const via = () => { cl.con = cl.con.filter(c => keyCon(c) !== k); for (const L in cl.prep) cl.prep[L] = cl.prep[L].filter(x => x !== k); salva(); disegna(); }; if (c && c.r) chiedi('Incantesimo di ricerca', 'Le R non si sostituiscono con l’avanzare del livello. Toglierlo comunque?', via); else via(); });
+  r.querySelectorAll('[data-agg]').forEach(e => e.onclick = () => scegliDaLista(cl, +e.dataset.agg, {}));
+  r.querySelectorAll('[data-rmano]').forEach(e => e.onclick = () => scegliDaLista(cl, +e.dataset.rmano, { r: true }));
+  r.querySelectorAll('[data-tirar]').forEach(e => e.onclick = () => tiraR(cl, +e.dataset.tirar));
+  r.querySelectorAll('[data-extra]').forEach(e => e.onclick = () => scegliExtra(cl, +e.dataset.extra));
+}
+function voceLista(x) { return Array.isArray(x) ? { s: x[0], v: x[1] } : { s: x }; }
+function scegliDaLista(cl, L, opz) {
+  const arr = (DATI.liste[cl.classe] || {})[L] || [];
+  const presi = new Set(cl.con.map(keyCon));
+  const disegnaLista = filtro => arr.map((x, i) => ({ c: voceLista(x), i })).filter(({ c }) => !filtro || nomeCon(c).toLowerCase().includes(filtro))
+    .map(({ c, i }) => `<li><span class="num">${i + 1}.</span><span class="n" data-pick="${esc(keyCon(c))}">${esc(nomeCon(c))}</span>${presi.has(keyCon(c)) ? '<span class="tag">già conosciuto</span>' : `<button class="mini" data-scegli="${esc(keyCon(c))}">Scegli</button>`}</li>`).join('');
+  apri(`${opz.r ? 'R a mano' : 'Lista'} · ${cl.classe} ${L === 0 ? 'livello 0' : L + '°'}`, `<input id="cerca" placeholder="Cerca nella lista" autocomplete="off"><ul class="inc list-pick" id="lista">${disegnaLista('')}</ul>`, b => {
+    const lega = () => {
+      b.querySelectorAll('[data-scegli]').forEach(e => e.onclick = () => { const [s, v] = e.dataset.scegli.split('|'); cl.con.push({ s: +s, v: v || undefined, L, r: !!opz.r }); salva(); chiudi(); disegna(); });
+      b.querySelectorAll('[data-pick]').forEach(e => e.onclick = () => { const [s, v] = e.dataset.pick.split('|'); apriScheda({ s: +s, v: v || undefined, cl, L }); });
+    };
+    lega();
+    $('#cerca', b).oninput = e => { $('#lista', b).innerHTML = disegnaLista(e.target.value.toLowerCase()); lega(); };
+  });
+}
+function tiraR(cl, L) {
+  const arr = (DATI.liste[cl.classe] || {})[L] || [];
+  const presi = cl.con.map(keyCon);
+  const occ = arr.map((x, i) => presi.includes(keyCon(voceLista(x))) ? i + 1 : 0).filter(Boolean);
+  const n = M.tiroRicerca(arr.length, occ);
+  if (!n) return toast('Nessun incantesimo libero nella lista');
+  const c = voceLista(arr[n - 1]);
+  apri('Incantesimo di ricerca', `<p>Tiro sulla lista ${cl.classe}, ${L === 0 ? 'livello 0' : L + '° livello'} (1–${arr.length}):</p><p class="big">${n}</p><p><b>${esc(nomeCon(c))}</b></p><div class="row"><button class="pri" id="tieni">Segna come R</button><button id="vedi">Scheda</button></div>`, b => {
+    $('#tieni', b).onclick = () => { cl.con.push({ s: c.s, v: c.v, L, r: true }); salva(); chiudi(); disegna(); };
+    $('#vedi', b).onclick = () => apriScheda({ s: c.s, v: c.v, cl, L });
+  });
+}
+// ricerca libera su tutte le schede (extra, oggetti, bonus su un incantesimo)
+function cercaSchede(q, max) {
+  q = q.toLowerCase().trim();
+  const out = [];
+  if (q.length < 2) return out;
+  for (let i = 0; i < SC.length && out.length < (max || 40); i++) {
+    const s = SC[i];
+    if (s.n.toLowerCase().includes(q)) {
+      if (s.var) for (const v of s.var) out.push({ s: i, v: v.n }); else out.push({ s: i });
+    }
+  }
+  return out;
+}
+function scegliScheda(titolo, cb) {
+  apri(titolo, `<input id="cerca" placeholder="Nome dell'incantesimo (almeno 2 lettere)" autocomplete="off"><ul class="inc list-pick" id="lista"></ul>`, b => {
+    $('#cerca', b).focus();
+    $('#cerca', b).oninput = e => {
+      $('#lista', b).innerHTML = cercaSchede(e.target.value).map(c => `<li><span class="n" data-pick="${esc(keyCon(c))}">${esc(nomeCon(c))} <span class="muted small">${esc(SC[c.s].scuola)} · min. ${minLivello(c.s)}°</span></span><button class="mini" data-scegli="${esc(keyCon(c))}">Scegli</button></li>`).join('');
+      b.querySelectorAll('[data-scegli]').forEach(x => x.onclick = () => { const [s, v] = x.dataset.scegli.split('|'); cb({ s: +s, v: v || undefined }); });
+      b.querySelectorAll('[data-pick]').forEach(x => x.onclick = () => { const [s, v] = x.dataset.pick.split('|'); apriScheda({ s: +s, v: v || undefined }); });
+    };
+  });
+}
+function scegliExtra(cl, L) {
+  scegliScheda('Extra a mano', c => {
+    const liv = livelliScheda(c.s).filter(x => !c.v || x.v === c.v);
+    const propria = livelloLista(cl.classe, c.s, c.v);
+    const lvls = [...new Set(liv.map(x => x.L))].sort();
+    apri('Extra: ' + nomeCon(c), `<label class="f">Livello${propria != null ? ' (quello della tua lista)' : ''}<select id="lv">${(propria != null ? [propria] : (lvls.length ? lvls : [L])).map(l => `<option ${l === L ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      <label class="f">Fonte (talento, dote, privilegio…)<input id="fonte"></label><button class="pri" id="ok">Aggiungi</button>`, b => {
+      $('#ok', b).onclick = () => { cl.con.push({ s: c.s, v: c.v, L: +$('#lv', b).value, x: true, fonte: $('#fonte', b).value }); salva(); chiudi(); disegna(); };
+    });
+  });
+}
+
+// bonus permanenti
+const AMBITI = { cd: 'CD', li: 'Livello di incantatore', conc: 'Concentrazione', ri: 'Superare la RI', danni: 'Danni', con: 'Conosciuti extra', slot: 'Slot extra', ucm: 'Utilizzare congegni magici', meta: 'Incremento di metamagia' };
+const MODELLI = [
+  { nome: 'Incantesimi Focalizzati', ambito: 'cd', filtro: { tipo: 'scuola' }, valore: 1 },
+  { nome: 'Incantesimi Focalizzati Superiore', ambito: 'cd', filtro: { tipo: 'scuola' }, valore: 1 },
+  { nome: 'Elemento Focalizzato', ambito: 'cd', filtro: { tipo: 'descrittore' }, valore: 1 },
+  { nome: 'Elemento Focalizzato Superiore', ambito: 'cd', filtro: { tipo: 'descrittore' }, valore: 1 },
+  { nome: 'Incantesimi Inarrestabili', ambito: 'ri', filtro: { tipo: 'tutti' }, valore: 2 },
+  { nome: 'Incantesimi Inarrestabili Superiore', ambito: 'ri', filtro: { tipo: 'tutti' }, valore: 2 },
+  { nome: 'Incantare in Combattimento', ambito: 'conc', modo: 'difensiva', filtro: { tipo: 'tutti' }, valore: 4 },
+  { nome: 'Concentrazione Prodigiosa', ambito: 'conc', filtro: { tipo: 'tutti' }, valore: 2, nota: 'Nessuna prova di Concentrazione per il movimento violento.' },
+  { nome: 'Incantesimo Specializzato', ambito: 'li', filtro: { tipo: 'incantesimo' }, valore: 2 },
+  { nome: 'Incantesimi Aggiuntivi', ambito: 'con', L: 1, filtro: { tipo: 'tutti' }, valore: 1 },
+  { nome: 'Vocazione Magica', ambito: 'ucm', filtro: { tipo: 'tutti' }, valore: 2 }];
+function descBonus(b) {
+  const f = b.filtro || {};
+  const dove = f.tipo === 'scuola' ? f.v : f.tipo === 'descrittore' ? '[' + f.v + ']' : f.tipo === 'incantesimo' ? (SC.find(s => s.k === f.v) || {}).n : '';
+  return `${AMBITI[b.ambito]} ${b.ambito === 'meta' ? '−' : '+'}${b.valore}${b.ambito === 'danni' ? (b.modo === 'dado' ? ' per dado' : ' fissi') : ''}${b.modo === 'difensiva' ? ' (sulla difensiva e In Lotta)' : ''}${(b.ambito === 'con' || b.ambito === 'slot') ? ' al ' + b.L + '°' : ''}${dove ? ' · ' + dove : ''}${b.classe ? ' · solo ' + b.classe : ''}`;
+}
+function cardBonus(pg) {
+  return `<div class="card"><h2>Bonus permanenti</h2><ul class="inc">${pg.bonus.map((b, i) => `<li><input type="checkbox" data-att="${i}" ${b.attivo !== false ? 'checked' : ''} aria-label="Attivo"><span class="n" data-mod="${i}"><b>${esc(b.nome)}</b><br><span class="small muted">${esc(descBonus(b))}${b.nota ? ' · ' + esc(b.nota) : ''}</span></span><button class="mini" data-del="${i}" aria-label="Elimina">✕</button></li>`).join('') || '<li class="muted">Nessun bonus.</li>'}</ul><button style="margin-top:8px" id="bAggB">+ Bonus</button></div>`;
+}
+function legaBonus(pg) {
+  document.querySelectorAll('[data-att]').forEach(e => e.onchange = () => { pg.bonus[+e.dataset.att].attivo = e.checked; salva(); riassunto(); });
+  document.querySelectorAll('[data-del]').forEach(e => e.onclick = () => { pg.bonus.splice(+e.dataset.del, 1); salva(); disegna(); });
+  document.querySelectorAll('[data-mod]').forEach(e => e.onclick = () => formBonus(pg, +e.dataset.mod));
+  $('#bAggB').onclick = () => formBonus(pg, -1);
+}
+function formBonus(pg, idx) {
+  const b = idx >= 0 ? JSON.parse(JSON.stringify(pg.bonus[idx])) : { nome: '', fonte: 'talento', ambito: 'cd', filtro: { tipo: 'tutti' }, valore: 1, attivo: true };
+  const disegnaForm = () => {
+    const f = b.filtro || (b.filtro = { tipo: 'tutti' });
+    let filtroV = '';
+    if (f.tipo === 'scuola') filtroV = `<select id="fv">${SCUOLE.map(s => `<option ${s === f.v ? 'selected' : ''}>${s}</option>`).join('')}</select>`;
+    if (f.tipo === 'descrittore') filtroV = `<select id="fv">${DESCR.map(s => `<option ${s === f.v ? 'selected' : ''}>${s}</option>`).join('')}</select>`;
+    if (f.tipo === 'incantesimo') filtroV = `<button id="fvS">${f.v ? esc((SC.find(s => s.k === f.v) || {}).n) : 'Scegli l’incantesimo'}</button>`;
+    const h = `${idx < 0 ? `<label class="f">Modello<select id="mod"><option value="">— nessuno —</option>${MODELLI.map((m, i) => `<option value="${i}">${m.nome}</option>`).join('')}</select></label>` : ''}
+      <div class="grid2"><label class="f">Nome<input id="nome" value="${esc(b.nome)}"></label>
+      <label class="f">Fonte<select id="fonte">${['talento', 'tratto', 'oggetto', 'razza', 'altro'].map(x => `<option ${x === b.fonte ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+      <label class="f">Ambito<select id="amb">${Object.keys(AMBITI).map(k => `<option value="${k}" ${k === b.ambito ? 'selected' : ''}>${AMBITI[k]}</option>`).join('')}</select></label>
+      <label class="f">Valore<input id="val" type="number" inputmode="numeric" value="${b.valore}"></label></div>
+      ${b.ambito === 'conc' ? `<label class="f">Quando<select id="modo"><option value="">sempre</option><option value="difensiva" ${b.modo === 'difensiva' ? 'selected' : ''}>sulla difensiva e In Lotta</option></select></label>` : ''}
+      ${b.ambito === 'danni' ? `<label class="f">Come<select id="modo"><option value="">fissi</option><option value="dado" ${b.modo === 'dado' ? 'selected' : ''}>per dado</option></select></label>` : ''}
+      ${(b.ambito === 'con' || b.ambito === 'slot') ? `<label class="f">Livello di magia<select id="L">${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(x => `<option ${x === b.L ? 'selected' : ''}>${x}</option>`).join('')}</select></label>` : ''}
+      ${b.ambito === 'meta' ? `<label class="f">Talento (facoltativo)<select id="tal"><option value="">qualsiasi</option>${DATI.metamagia.map(t => `<option ${t.n === b.talento ? 'selected' : ''}>${esc(t.n)}</option>`).join('')}</select></label>` : ''}
+      ${['cd', 'li', 'ri', 'danni', 'meta', 'conc'].includes(b.ambito) ? `<div class="grid2"><label class="f">Si applica a<select id="ft">${['tutti', 'scuola', 'descrittore', 'incantesimo'].map(x => `<option ${x === f.tipo ? 'selected' : ''}>${x}</option>`).join('')}</select></label><div class="f">${filtroV ? '<span class="small muted">Quale</span>' + filtroV : ''}</div></div>` : ''}
+      ${pg.classi.length > 1 ? `<label class="f">Classe<select id="cls"><option value="">tutte</option>${pg.classi.map(c => `<option ${c.classe === b.classe ? 'selected' : ''}>${c.classe}</option>`).join('')}</select></label>` : ''}
+      <label class="f">Nota<input id="nota" value="${esc(b.nota || '')}"></label>
+      <button class="pri" id="ok">${idx < 0 ? 'Aggiungi' : 'Salva'}</button>`;
+    apri(idx < 0 ? 'Nuovo bonus' : 'Modifica bonus', h, x => {
+      const leggi = () => {
+        b.nome = $('#nome', x).value; b.fonte = $('#fonte', x).value; b.ambito = $('#amb', x).value; b.valore = +$('#val', x).value || 0;
+        b.nota = $('#nota', x).value;
+        const m = $('#modo', x); b.modo = m ? m.value || undefined : undefined;
+        const L = $('#L', x); if (L) b.L = +L.value;
+        const t = $('#tal', x); b.talento = t ? t.value || undefined : undefined;
+        const ft = $('#ft', x); if (ft) { if (ft.value !== b.filtro.tipo) b.filtro = { tipo: ft.value }; else { const fv = $('#fv', x); if (fv) b.filtro.v = fv.value; } }
+        const c = $('#cls', x); b.classe = c ? c.value || undefined : undefined;
+      };
+      const mm = $('#mod', x); if (mm) mm.onchange = () => { const m = MODELLI[+mm.value]; if (m) Object.assign(b, JSON.parse(JSON.stringify(m)), { fonte: 'talento', attivo: true }); if (m && m.filtro.tipo === 'scuola') b.filtro.v = SCUOLE[0]; if (m && m.filtro.tipo === 'descrittore') b.filtro.v = 'fuoco'; disegnaForm(); };
+      ['#amb', '#ft'].forEach(sel => { const e = $(sel, x); if (e) e.onchange = () => { leggi(); if (sel === '#ft' && b.filtro.tipo === 'scuola') b.filtro.v = SCUOLE[0]; if (sel === '#ft' && b.filtro.tipo === 'descrittore') b.filtro.v = DESCR[0]; disegnaForm(); }; });
+      const fs = $('#fvS', x); if (fs) fs.onclick = () => { leggi(); scegliScheda('Incantesimo del bonus', c => { b.filtro.v = SC[c.s].k; disegnaForm(); }); };
+      $('#ok', x).onclick = () => { leggi(); if (!b.nome) b.nome = AMBITI[b.ambito]; if (idx < 0) pg.bonus.push(b); else pg.bonus[idx] = b; salva(); chiudi(); disegna(); };
+    });
+  };
+  disegnaForm();
+}
+function cardMeta(pg) {
+  return `<div class="card"><h2>Talenti di metamagia</h2><div class="small muted">Si applicano al lancio dei soli preparati (Vol. 3).</div>
+    <ul class="inc">${pg.meta.map(n => { const t = DATI.metamagia.find(x => x.n === n) || { n }; return `<li><span class="n" data-vm="${esc(n)}">${esc(n)} <span class="muted small">${t.inc == null ? (t.eff === 'intensificati' ? 'livello a scelta' : 'incremento da definire') : '+' + t.inc} · ${esc(t.fonte || '')}</span></span><button class="mini" data-tm="${esc(n)}" aria-label="Togli">✕</button></li>`; }).join('') || '<li class="muted">Nessun talento.</li>'}</ul>
+    <button style="margin-top:8px" id="bAggM">+ Talento</button></div>`;
+}
+function legaMeta(pg) {
+  document.querySelectorAll('[data-tm]').forEach(e => e.onclick = () => { pg.meta = pg.meta.filter(n => n !== e.dataset.tm); salva(); disegna(); });
+  document.querySelectorAll('[data-vm]').forEach(e => e.onclick = () => { const t = DATI.metamagia.find(x => x.n === e.dataset.vm); if (t) apri(t.n, `<p><b>Incremento:</b> ${t.inc == null ? (t.nota_inc || 'non indicato') : '+' + t.inc}${t.nota_inc ? ' — ' + esc(t.nota_inc) : ''}</p>${t.req ? `<p><b>Requisiti:</b> ${esc(t.req)}</p>` : ''}${t.limiti ? `<p><b>Limiti:</b> ${esc(t.limiti)}</p>` : ''}<p>${esc(t.intro || '')} ${esc(t.nota || '')}</p><p class="muted small">Fonte: ${esc(t.fonte)}${t.url ? ` · <a href="${esc(t.url)}" target="_blank" rel="noopener">pagina</a>` : ''}</p>`); });
+  $('#bAggM').onclick = () => {
+    const lista = f => DATI.metamagia.filter(t => !pg.meta.includes(t.n) && t.n.toLowerCase().includes(f)).map(t => `<li><span class="n">${esc(t.n)} <span class="muted small">${t.inc == null ? '—' : '+' + t.inc} · ${esc(t.fonte)}</span></span><button class="mini" data-pm="${esc(t.n)}">Aggiungi</button></li>`).join('');
+    apri('Talenti di metamagia', `<input id="cerca" placeholder="Cerca" autocomplete="off"><ul class="inc" id="lista">${lista('')}</ul>`, b => {
+      const lega = () => b.querySelectorAll('[data-pm]').forEach(e => e.onclick = () => { pg.meta.push(e.dataset.pm); salva(); e.closest('li').remove(); disegna(); dlg.open || 0; });
+      lega(); $('#cerca', b).oninput = e => { $('#lista', b).innerHTML = lista(e.target.value.toLowerCase()); lega(); };
+    });
+  };
+}
+function backup() {
+  const tutti = JSON.stringify({ libroIncantesimi: 1, pg: ST.pg }, null, 1);
+  apri('Esporta / importa', `<p class="small muted">Copia il testo e incollalo sull'altro dispositivo, nel riquadro qui sotto, poi «Importa». I personaggi importati si aggiungono a quelli che ci sono.</p>
+    <textarea id="txt">${esc(tutti)}</textarea><div class="row"><button id="copia">Copia</button><button id="scarica">Scarica file</button><button class="pri" id="imp">Importa</button></div>`, b => {
+    $('#copia', b).onclick = () => { navigator.clipboard.writeText($('#txt', b).value).then(() => toast('Copiato'), () => { $('#txt', b).select(); document.execCommand('copy'); toast('Copiato'); }); };
+    $('#scarica', b).onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([tutti], { type: 'application/json' })); a.download = 'libro-incantesimi.json'; a.click(); };
+    $('#imp', b).onclick = () => {
+      try {
+        const d = JSON.parse($('#txt', b).value);
+        const arr = d.pg || (Array.isArray(d) ? d : [d]);
+        let n = 0;
+        for (const p of arr) { if (!p.classi) continue; p.id = uid(); ST.pg.push(p); n++; }
+        if (!n) throw new Error('nessun personaggio');
+        salva(); chiudi(); disegna(); toast(`Importati ${n} personaggi`);
+      } catch (e) { toast('Testo non valido: ' + esc(e.message)); }
+    };
+  });
+}
+
+// ---------------------------------------------------------------- scheda «Oggi»
+function tabOggi() {
+  const pg = PG(), cl = CLS(pg), ctx = ctxDi(pg, cl);
+  const tot = M.slot(cl.classe, cl.livello, cl.punteggio, extraSlot(pg, cl));
+  const con = M.conosciuti(cl.classe, cl.livello, extraCon(pg, cl));
+  let h = `<section class="panel due"><div style="display:grid;gap:12px"><div class="card"><div class="row"><h2 class="grow" style="margin:0">Slot di oggi</h2><button id="bRiposo" class="pri">Riposo</button></div>
+    <div class="row small muted" style="margin-top:6px"><span class="grow">Slot superiore: ${cl.sup}/${M.usiSlotSuperiore(cl.punteggio)} usi</span>${pg.annulla ? '<button class="mini" id="bAnnulla">Annulla ultimo lancio</button>' : ''}<button class="mini" id="bSett">Nuova settimana</button></div>`;
+  for (const L of M.livelliMagia(cl.classe)) {
+    if (tot[L] == null) continue;
+    const u = cl.usati[L] || 0;
+    h += `<div class="lvl"><div class="lvlh"><b>${L === 0 ? 'Livello 0' : L + '°'}</b><span class="small muted">${Math.max(0, tot[L] - u)}/${tot[L]} liberi</span></div><div class="dots" style="margin-top:4px">${[...Array(tot[L]).keys()].map(i => `<button class="dot ${i >= tot[L] - u ? 'usato' : ''}" data-dot="${L}" data-i="${i}" aria-label="slot ${L}° ${i + 1}"></button>`).join('')}${tot[L] === 0 ? '<span class="small muted">nessuno slot</span>' : ''}</div></div>`;
+  }
+  h += '</div>';
+  // preparati e lancio
+  h += `<div class="card"><h2>Incantesimi di oggi</h2><div class="small muted">Spunta i preparati (metà dei conosciuti per eccesso); tocca un nome per la scheda e il lancio.</div>`;
+  for (const L of M.livelliMagia(cl.classe)) {
+    const mie = cl.con.filter(c => c.L === L);
+    if (!mie.length) continue;
+    const prep = (cl.prep[L] || []).filter(k => mie.some(c => keyCon(c) === k));
+    const max = M.preparabili(L, mie.length);
+    h += `<div class="lvl"><div class="lvlh"><b>${L === 0 ? 'Livello 0 (tutti preparati)' : L + '° livello'}</b>${L ? `<span class="small ${prep.length > max ? 'cond' : 'muted'}">preparati ${prep.length}/${max}</span>` : ''}</div><ul class="inc">`;
+    for (const c of mie) {
+      const k = keyCon(c), p = L === 0 || prep.includes(k);
+      h += `<li>${L ? `<input type="checkbox" data-prep="${esc(k)}" data-l="${L}" ${p ? 'checked' : ''} aria-label="Preparato">` : ''}<span class="n" data-lancia="${esc(k)}" data-l="${L}">${esc(nomeCon(c))}${c.r ? ' <span class="tag r">R</span>' : ''}${p ? '' : ' <span class="tag no">2 slot</span>'}</span></li>`;
+    }
+    h += '</ul></div>';
+  }
+  if (!cl.con.length) h += '<p class="muted">Nessun incantesimo conosciuto: aggiungili nella scheda Personaggio.</p>';
+  h += `</div></div><div style="display:grid;gap:12px">${cardAttivi(pg)}${cardConc(pg, cl, ctx)}</div></section>`;
+  $('#main').innerHTML = h;
+  document.querySelectorAll('[data-dot]').forEach(e => e.onclick = () => { const L = +e.dataset.dot; const u = cl.usati[L] || 0; cl.usati[L] = e.classList.contains('usato') ? Math.max(0, u - 1) : u + 1; salva(); disegna(); });
+  document.querySelectorAll('[data-prep]').forEach(e => e.onchange = () => { const L = +e.dataset.l; const a = cl.prep[L] || (cl.prep[L] = []); if (e.checked) a.push(e.dataset.prep); else cl.prep[L] = a.filter(x => x !== e.dataset.prep); salva(); disegna(); });
+  document.querySelectorAll('[data-lancia]').forEach(e => e.onclick = () => { const [s, v] = e.dataset.lancia.split('|'); apriScheda({ s: +s, v: v || undefined, cl, L: +e.dataset.l, lancio: true }); });
+  $('#bRiposo').onclick = () => chiedi('Riposo', 'Si azzerano slot, usi dello slot superiore, cariche delle cure, blocchi delle bacchette e reagenti giornalieri. I preparati restano quelli di ieri.', () => {
+    for (const c of pg.classi) { c.usati = {}; c.sup = 0; }
+    for (const b of pg.bacchette) { b.bloccata = false; if (M.curaConCariche(nomeCon(b))) b.cariche = 3; }
+    for (const k in pg.reag) { const s = SC.find(x => x.k === k); const r = s && M.reagente(s.reag); if (!r || r.per === 'giorno') delete pg.reag[k]; }
+    pg.annulla = null; salva(); disegna(); toast('Riposo fatto: scegli i preparati di oggi'); });
+  $('#bSett').onclick = () => { for (const k in pg.reag) { const s = SC.find(x => x.k === k); const r = s && M.reagente(s.reag); if (r && r.per === 'settimana') delete pg.reag[k]; } salva(); toast('Reagenti settimanali azzerati'); };
+  const ba = $('#bAnnulla'); if (ba) ba.onclick = () => { const v = JSON.parse(pg.annulla); Object.assign(pg, v); pg.annulla = null; salva(); disegna(); toast('Ultimo lancio annullato'); };
+  legaAttivi(pg); legaConc(pg, cl, ctx);
+}
+function cardAttivi(pg) {
+  return `<div class="card"><h2>Incantesimi attivi</h2>${pg.attivi.length ? `<div class="row"><button class="mini" data-pass="1">Round successivo</button><button class="mini" data-pass="10">+1 minuto</button><button class="mini" data-pass="100">+10 minuti</button><button class="mini" data-pass="600">+1 ora</button></div>` : ''}
+   <ul class="inc">${pg.attivi.map(a => `<li><span class="n" data-va="${a.s}">${esc(a.n)}<br><span class="small ${a.round != null && a.round <= 1 ? 'cond' : 'muted'}">${a.round != null ? 'resta ' + esc(M.tempoTesto(a.round)) : ''}${a.conc ? (a.round != null ? ' · ' : '') + 'Concentrazione: azione standard ogni round' : ''}${a.I ? ' · (I)' : ''}</span></span><button class="mini" data-fine="${a.id}">Termina</button></li>`).join('') || '<li class="muted">Nessuno.</li>'}</ul></div>`;
+}
+function legaAttivi(pg) {
+  document.querySelectorAll('[data-pass]').forEach(e => e.onclick = () => {
+    const n = +e.dataset.pass, finiti = [];
+    for (const a of pg.attivi) if (a.round != null) { a.round -= n; if (a.round <= 0) finiti.push(a.n); }
+    pg.attivi = pg.attivi.filter(a => a.round == null || a.round > 0);
+    salva(); disegna(); if (finiti.length) toast('Terminato: ' + finiti.map(esc).join(', '), 3500);
+  });
+  document.querySelectorAll('[data-fine]').forEach(e => e.onclick = () => { pg.attivi = pg.attivi.filter(a => a.id !== e.dataset.fine); salva(); disegna(); });
+  document.querySelectorAll('[data-va]').forEach(e => e.onclick = () => apriScheda({ s: +e.dataset.va }));
+}
+function cardConc(pg, cl, ctx) {
+  return `<div class="card"><h2>Concentrazione</h2><div class="small muted">Prova: 1d20 + ${M.concentrazione(ctx, null, false)}${M.concentrazione(ctx, null, true) !== M.concentrazione(ctx, null, false) ? ` (sulla difensiva e In Lotta +${M.concentrazione(ctx, null, true)})` : ''}</div>
+   <div class="grid2" style="margin-top:6px"><label class="f">Distrazione<select id="cRiga">${DATI.concentrazione.map((r, i) => `<option value="${i}">${esc(r.d)}</option>`).join('')}</select></label>
+   <label class="f">Livello dell'incantesimo<select id="cL">${M.livelliMagia(cl.classe).map(l => `<option>${l}</option>`).join('')}</select></label>
+   <label class="f" id="cXl">Valore<input id="cX" type="number" inputmode="numeric" value="0"></label></div>
+   <div id="cRis" style="margin-top:8px"></div></div>`;
+}
+function legaConc(pg, cl, ctx) {
+  const agg = () => {
+    const r = DATI.concentrazione[+$('#cRiga').value], L = +$('#cL').value, x = +$('#cX').value || 0;
+    const servex = /Ferimento|continuati|Distratto|Lotta/.test(r.d);
+    $('#cXl').style.display = servex ? '' : 'none';
+    $('#cXl').firstChild.textContent = /Lotta/.test(r.d) ? 'BMC dell’aggressore' : /Distratto/.test(r.d) ? 'CD dell’incantesimo' : 'Danni subiti';
+    const cd = M.cdConcentrazione(r, L, x);
+    const b = M.concentrazione(ctx, null, /difensiva|Lotta/.test(r.d));
+    $('#cRis').innerHTML = cd == null ? '<span class="muted">CD indicata nella scheda dell’incantesimo.</span>' : `CD <b>${cd}</b> · bonus +${b} → <span class="big">d20 ≥ ${M.servePerCD(b, cd)}</span>${M.servePerCD(b, cd) > 20 ? ' <span class="cond">impossibile</span>' : ''}`;
+  };
+  ['#cRiga', '#cL', '#cX'].forEach(s => $(s).oninput = agg); agg();
+}
+
+// ---------------------------------------------------------------- scheda «Libro»
+let filtri = { q: '', classe: '', L: '', scuola: '', n: 60 };
+function tabLibro() {
+  const cl = CLS();
+  if (filtri.classe === '' && !filtri._init) { filtri.classe = cl.classe; filtri._init = true; }
+  let h = `<section class="panel"><div class="card"><input id="lq" placeholder="Cerca per nome" value="${esc(filtri.q)}" autocomplete="off">
+   <div class="grid3" style="margin-top:8px"><select id="lc"><option value="">tutte le liste</option>${Object.keys(DATI.classi).map(c => `<option ${c === filtri.classe ? 'selected' : ''}>${c}</option>`).join('')}<option value="concessi" ${filtri.classe === 'concessi' ? 'selected' : ''}>concessi dai privilegi</option></select>
+   <select id="ll"><option value="">ogni livello</option>${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(x => `<option ${String(x) === filtri.L ? 'selected' : ''}>${x}</option>`).join('')}</select>
+   <select id="ls"><option value="">ogni scuola</option>${SCUOLE.map(x => `<option ${x === filtri.scuola ? 'selected' : ''}>${x}</option>`).join('')}</select></div></div><div class="card"><ul class="inc" id="lris"></ul></div></section>`;
+  $('#main').innerHTML = h;
+  const agg = () => {
+    filtri.q = $('#lq').value; filtri.classe = $('#lc').value; filtri.L = $('#ll').value; filtri.scuola = $('#ls').value;
+    const q = filtri.q.toLowerCase();
+    let out = [];
+    if (filtri.classe && filtri.classe !== 'concessi') {
+      const ls = DATI.liste[filtri.classe] || {};
+      for (const L in ls) if (filtri.L === '' || filtri.L === L) ls[L].forEach((x, i) => out.push(Object.assign(voceLista(x), { L: +L, num: i + 1 })));
+    } else {
+      SC.forEach((s, i) => { if (filtri.classe === 'concessi' && !s.concesso) return; if (s.var) s.var.forEach(v => out.push({ s: i, v: v.n })); else out.push({ s: i }); });
+      if (filtri.L !== '') out = out.filter(c => livelliScheda(c.s).some(x => String(x.L) === filtri.L && (!c.v || x.v === c.v)));
+    }
+    out = out.filter(c => (!q || nomeCon(c).toLowerCase().includes(q)) && (!filtri.scuola || SC[c.s].scuola === filtri.scuola));
+    const tot = out.length;
+    $('#lris').innerHTML = out.slice(0, filtri.n).map(c => `<li><span class="num">${c.num ? c.num + '.' : ''}</span><span class="n" data-lv="${esc(keyCon(c))}" data-l="${c.L ?? ''}">${esc(nomeCon(c))} <span class="muted small">${esc(SC[c.s].scuola)}${c.L != null ? ' · ' + c.L + '°' : ''}${SC[c.s].mod ? ' · ◆' : ''}</span></span></li>`).join('') +
+      (tot > filtri.n ? `<li><button id="lpiu" class="grow">Mostra altri (${tot - filtri.n})</button></li>` : '') + (tot ? '' : '<li class="muted">Nessun risultato.</li>');
+    document.querySelectorAll('[data-lv]').forEach(e => e.onclick = () => { const [s, v] = e.dataset.lv.split('|'); apriScheda({ s: +s, v: v || undefined, L: e.dataset.l === '' ? undefined : +e.dataset.l }); });
+    const p = $('#lpiu'); if (p) p.onclick = () => { filtri.n += 100; agg(); };
+  };
+  $('#lq').oninput = () => { filtri.n = 60; agg(); };
+  ['#lc', '#ll', '#ls'].forEach(s => $(s).onchange = () => { filtri.n = 60; agg(); });
+  agg();
+}
+
+// ---------------------------------------------------------------- scheda «Oggetti»
+const nellaLista = (pg, c) => pg.classi.some(cl => livelloLista(cl.classe, c.s, c.v) != null);
+function tabOggetti() {
+  const pg = PG();
+  const nb = pg.bacchette.length, dup = pg.bacchette.some((b, i) => pg.bacchette.findIndex(x => keyCon(x) === keyCon(b)) !== i);
+  let h = `<section class="panel due"><div class="card"><h2>Pergamene</h2><ul class="inc">${pg.pergamene.map((o, i) => rigaOgg(pg, o, i, 'p')).join('') || '<li class="muted">Nessuna pergamena.</li>'}</ul><button style="margin-top:8px" data-nuovo="p">+ Pergamena</button></div>
+   <div class="card"><h2>Bacchette</h2>${nb > 5 ? '<div class="avviso">Più di 5 bacchette per personaggio (Vol. 3, Limiti delle bacchette).</div>' : ''}${dup ? '<div class="avviso">Due bacchette dello stesso incantesimo (massimo una per tipo).</div>' : ''}
+   <ul class="inc">${pg.bacchette.map((o, i) => rigaOgg(pg, o, i, 'b')).join('') || '<li class="muted">Nessuna bacchetta.</li>'}</ul><button style="margin-top:8px" data-nuovo="b">+ Bacchetta</button>
+   <div class="small muted" style="margin-top:6px">Le bacchette non hanno cariche, tranne le Cura ferite (3 al giorno). Utilizzare congegni magici: bonus +${pg.ucm + M.somma(pg.bonus, 'ucm')}.</div></div></section>`;
+  $('#main').innerHTML = h;
+  document.querySelectorAll('[data-nuovo]').forEach(e => e.onclick = () => nuovoOgg(pg, e.dataset.nuovo));
+  document.querySelectorAll('[data-usa]').forEach(e => e.onclick = () => { const [t, i] = e.dataset.usa.split(':'); usaOgg(pg, t, +i); });
+  document.querySelectorAll('[data-vo]').forEach(e => e.onclick = () => { const [t, i] = e.dataset.vo.split(':'); const o = (t === 'p' ? pg.pergamene : pg.bacchette)[+i]; apriScheda({ s: o.s, v: o.v, L: o.L, liOgg: o.li, cdOgg: o.cd, oggetto: true }); });
+  document.querySelectorAll('[data-delo]').forEach(e => e.onclick = () => { const [t, i] = e.dataset.delo.split(':'); (t === 'p' ? pg.pergamene : pg.bacchette).splice(+i, 1); salva(); disegna(); });
+}
+function rigaOgg(pg, o, i, t) {
+  const lista = nellaLista(pg, o);
+  const car = t === 'b' && o.cariche != null ? ` · cariche ${o.cariche}/3` : '';
+  return `<li><span class="n" data-vo="${t}:${i}">${esc(nomeCon(o))}${t === 'p' && o.q > 1 ? ' ×' + o.q : ''}<br><span class="small muted">${o.L}° · LI ${o.li} · CD ${o.cd}${car}${lista ? ' · nella tua lista' : ' · serve UCM'}${o.bloccata ? ' · <span class="cond">bloccata fino al riposo</span>' : ''}</span></span><button class="mini pri" data-usa="${t}:${i}" ${o.bloccata || (o.cariche === 0) ? 'disabled' : ''}>Usa</button><button class="mini" data-delo="${t}:${i}" aria-label="Elimina">✕</button></li>`;
+}
+function nuovoOgg(pg, t) {
+  scegliScheda(t === 'p' ? 'Nuova pergamena' : 'Nuova bacchetta', c => {
+    let L = minLivello(c.s); if (t === 'b') L = Math.min(L, 4);
+    const disegnaF = () => {
+      apri((t === 'p' ? 'Pergamena: ' : 'Bacchetta: ') + nomeCon(c), `<div class="grid2"><label class="f">Livello<select id="L">${(t === 'b' ? [0, 1, 2, 3, 4] : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]).map(x => `<option ${x === L ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+        <label class="f">Livello di incantatore<input id="li" type="number" inputmode="numeric" value="${M.liMinimo(L)}"></label>
+        <label class="f">CD<input id="cd" type="number" inputmode="numeric" value="${M.cdOggetto(L, true)}"></label>
+        ${t === 'p' ? '<label class="f">Quantità<input id="q" type="number" inputmode="numeric" value="1"></label>' : ''}</div>
+        <label class="row"><input type="checkbox" id="rit" checked> <span>Ritrovato (CD +1, Manuale dei Tesori)</span></label>
+        <button class="pri" id="ok">Aggiungi</button>`, b => {
+        $('#L', b).onchange = () => { L = +$('#L', b).value; disegnaF(); };
+        $('#rit', b).onchange = () => { $('#cd', b).value = M.cdOggetto(+$('#L', b).value, $('#rit', b).checked); };
+        $('#ok', b).onclick = () => {
+          const o = { s: c.s, v: c.v, L: +$('#L', b).value, li: +$('#li', b).value || 1, cd: +$('#cd', b).value, rit: $('#rit', b).checked };
+          if (t === 'p') { o.q = Math.max(1, +$('#q', b).value || 1); pg.pergamene.push(o); }
+          else { if (M.curaConCariche(nomeCon(o))) o.cariche = 3; pg.bacchette.push(o); }
+          salva(); chiudi(); disegna();
+        };
+      });
+    };
+    disegnaF();
+  });
+}
+function usaOgg(pg, t, i) {
+  const o = (t === 'p' ? pg.pergamene : pg.bacchette)[i];
+  const ucm = pg.ucm + M.somma(pg.bonus, 'ucm');
+  const consuma = () => { if (t === 'p') { o.q = (o.q || 1) - 1; if (o.q <= 0) pg.pergamene.splice(i, 1); } else if (o.cariche != null) o.cariche = Math.max(0, o.cariche - 1); salva(); chiudi(); disegna(); toast('Usata: <b>' + esc(nomeCon(o)) + '</b>'); };
+  if (nellaLista(pg, o)) {
+    apri('Usa: ' + nomeCon(o), `<p>L'incantesimo è nella tua lista: niente prova. LI ${o.li}, CD ${o.cd}. Niente metamagia.</p><div class="row"><button class="pri" id="ok">Usa</button><button id="sch">Scheda</button></div>`, b => { $('#ok', b).onclick = consuma; $('#sch', b).onclick = () => apriScheda({ s: o.s, v: o.v, L: o.L, liOgg: o.li, cdOgg: o.cd, oggetto: true }); });
+    return;
+  }
+  const cd = t === 'p' ? M.cdUcmPergamena(o.li) : M.CD_UCM_BACCHETTA;
+  apri('Usa: ' + nomeCon(o), `<p>Non è nella tua lista: prova di Utilizzare congegni magici <b>CD ${cd}</b>, bonus +${ucm}.</p><p class="big">d20 ≥ ${M.servePerCD(ucm, cd)}</p>
+    <div class="row"><button id="tira">Tira</button><button class="pri" id="ok">Riuscita</button><button id="ko">Fallita</button>${t === 'b' ? '<button class="warn" id="ko5">Fallita di 5+</button>' : ''}</div><div id="ris"></div>`, b => {
+    $('#tira', b).onclick = () => { const r = M.tira('1d20').tot; const tot = r + ucm; $('#ris', b).innerHTML = `1d20 (${r}) + ${ucm} = <b>${tot}</b> → ${tot >= cd ? 'riuscita' : (t === 'b' && tot <= cd - 5 ? '<span class="cond">fallita di 5 o più</span>' : 'fallita')}`; };
+    $('#ok', b).onclick = consuma;
+    $('#ko', b).onclick = () => { chiudi(); toast('Prova fallita'); };
+    const k5 = $('#ko5', b); if (k5) k5.onclick = () => { o.bloccata = true; salva(); chiudi(); disegna(); toast('Bacchetta inutilizzabile fino all’alba'); };
+  });
+}
+
+carica();
+applicaTema();
+disegna();
+</script>

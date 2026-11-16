@@ -1,0 +1,37 @@
+{
+  "name": "incantesimi",
+  "productName": "Libro degli incantesimi",
+  "version": "1.0.0",
+  "description": "Incantesimi dei personaggi della Collana: slot, preparati, CD, concentrazione, metamagia, pergamene e bacchette",
+  "author": "Collana",
+  "main": "main.js",
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "it.collana.incantesimi",
+    "productName": "Libro degli incantesimi",
+    "files": [
+      "main.js",
+      "icon.png",
+      "www/**/*"
+    ],
+    "win": {
+      "target": [
+        "portable",
+        "nsis"
+      ],
+      "icon": "icon.png"
+    },
+    "portable": {
+      "artifactName": "Incantesimi-${version}-portatile.exe"
+    },
+    "nsis": {
+      "artifactName": "Incantesimi-${version}-installazione.exe",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "publish": null
+  }
+}
