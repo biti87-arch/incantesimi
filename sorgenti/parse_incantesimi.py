@@ -7,9 +7,9 @@ Fonti (in sorgenti/docx/, nomi nelle costanti qui sotto):
 Stampa solo conteggi e segnalazioni (anomalie del manuale: vanno lette)."""
 import json, os, re, sys
 R = os.path.dirname(os.path.abspath(__file__))
-VOL4 = 'Vol. 4 - Libro degli incantesimi 2.4.1'
-VOL2 = 'Vol. 2 - Classi 2.5.19'
-VOL3 = 'Vol. 3 - Miscellanea 2.5.9'
+VOL4 = 'Vol. 4 - Libro degli incantesimi 2.4.2'
+VOL2 = 'Vol. 2 - Classi 2.5.20'
+VOL3 = 'Vol. 3 - Miscellanea 2.5.10'
 GOLARION = os.path.join(R, 'metamagia_golarion.json')
 
 def carica(n):
@@ -369,13 +369,14 @@ for c, d in CLASSI.items():
 # ---------------------------------------------------------------- Vol. 3: metamagia
 P3 = carica(VOL3)
 # incrementi scritti nel testo e non nella riga «Incremento di livello»
-META_INC = {'Incantesimo consacrato': 2}
+META_INC = {}
 meta = []
 def leggi_meta(i):
     nome = re.sub(r'\s*\(metamagia\)$', '', P3[i]['t'].strip())
     inc, req, testo = None, '', []
     j = i + 1
-    while j < len(P3) and not (P3[j]['h'] and P3[j]['t'].strip().endswith('(metamagia)')) and not P3[j]['o']:
+    # si ferma al talento successivo: titolo senza «:» (Incremento, Requisiti, Speciale hanno i due punti)
+    while j < len(P3) and not (P3[j]['h'] and P3[j]['t'].strip() and ':' not in P3[j]['t']) and not P3[j]['o']:
         t = P3[j]['t'].strip()
         m = re.match(r'Incremento di livello: ?\+?(\d+)', t, re.I)
         if m: inc = int(m.group(1))

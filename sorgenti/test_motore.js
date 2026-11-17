@@ -87,7 +87,9 @@ eq('non preparato senza slot', M.slotDaSpendere({ 2: 1 }, 2, 2), null);
 eq('reagenti', [100, 300, 700, 5000].map(c => M.reagente(c).per), ['giorno', 'giorno', 'settimana', 'lancio']);
 eq('tiro R', M.tiroRicerca(5, [1, 2, 3, 4], () => 0.1), 5);
 eq('pergamena liv 3', [M.liMinimo(3), M.cdOggetto(3, true), M.cdUcmPergamena(5)], [5, 15, 25]);
-eq('cure con cariche', ['Cura ferite gravi', 'Cura ferite leggere contingente', 'Condotto vitale'].map(M.curaConCariche), [true, true, false]);
+eq('cure con cariche', ['Cura ferite gravi', 'Cura ferite leggere contingente', 'Cura ferite minori contingente', 'Cura ferite leggere di massa', 'Condotto vitale'].map(M.curaConCariche), [true, true, true, false, false]);
+eq('sovraccarico', [M.cdSovraccarico(3, 9), M.servePerCD(9, M.cdSovraccarico(3, 9)), M.cdSovraccarico(0, 1)], [19, 10, 8]);
+eq('cariche al giorno', [M.caricheMax('Dardo incantato'), M.caricheMax('Dardo incantato', 3), M.caricheMax('Cura ferite moderate'), M.caricheMax('Cura ferite moderate', 2), M.caricheMax('Cura ferite critiche', 9), M.caricheMax('Cura ferite gravi', 0)], [1, 1, 3, 2, 3, 3]);
 
 // copertura dei dati
 const conFormula = D.schede.filter(s => s.desc.some(p => p.f)).length;

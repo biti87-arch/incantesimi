@@ -1,4 +1,5 @@
 <title>Libro degli incantesimi</title>
+<script>/* tema scuro di base, prima del disegno (niente lampo chiaro) */try{var _t=(JSON.parse(localStorage.getItem('libro-incantesimi-v1'))||{}).tema||'dark';if(_t!=='auto')document.documentElement.dataset.theme=_t;}catch(e){document.documentElement.dataset.theme='dark';}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral+SC:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -49,6 +50,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .lvl{border-top:1px solid var(--line);padding-top:8px;margin-top:8px}
 .lvl:first-of-type{border-top:0;margin-top:0;padding-top:0}
+ul.inc li.grp{padding:0;border:0;background:none;min-height:0}
+button.grp .small{font-family:var(--f-body);font-weight:500;letter-spacing:0}
+button.grp{width:100%;display:flex;gap:8px;text-align:left;justify-content:space-between;align-items:center;background:var(--surface2);color:var(--title);font-family:var(--f-display)}
 .lvlh{display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap}
 .dots{display:flex;gap:6px;flex-wrap:wrap}
 .dot{width:30px;height:30px;min-height:0;padding:0;border-radius:50%;border:2px solid var(--gold);background:var(--gold)}
@@ -82,6 +86,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:8px;z-index:20;max-width:92vw;font-size:.9rem}
 .big{font-family:var(--f-mono);font-size:1.6rem;font-weight:500;color:var(--gold)}
 .list-pick li{cursor:pointer}
+.piede{position:sticky;bottom:-12px;background:var(--surface);padding:8px 0 12px;margin:0 0 -12px;border-top:1px solid var(--line)}
 .num{font-family:var(--f-mono);color:var(--muted);font-size:.8rem;min-width:2.2em;text-align:right}
 @media (min-width:900px){
   body{padding-bottom:20px}
@@ -128,6 +133,11 @@ function nuovaClasse(c) { return { classe: c, livello: 1, car: DATI.classi[c].ca
 function carica() {
   try { ST = JSON.parse(localStorage.getItem(CHIAVE)); } catch (e) { ST = null; }
   if (!ST || !ST.pg || !ST.pg.length) { const p = nuovoPg('Nuovo personaggio'); ST = { v: 1, attivo: p.id, pg: [p], tab: 'pg' }; }
+  // bacchette della v1.0.1 (nessuna carica tranne le Cura): 1 carica al giorno, Cura 3 (Vol. 3)
+  for (const p of ST.pg) for (const b of p.bacchette || []) {
+    if (b.max == null) b.max = M.caricheMax(nomeCon(b), b.cariche != null ? 3 : 1);
+    if (b.cariche == null) b.cariche = b.max;
+  }
 }
 function salva() { try { localStorage.setItem(CHIAVE, JSON.stringify(ST)); } catch (e) { toast('Salvataggio non riuscito: ' + e.message); } }
 const PG = () => ST.pg.find(p => p.id === ST.attivo) || ST.pg[0];
@@ -183,11 +193,14 @@ function riassunto() {
   $('#selPg').innerHTML = ST.pg.map(p => `<option value="${p.id}" ${p.id === pg.id ? 'selected' : ''}>${esc(p.nome)}</option>`).join('');
 }
 const TEMI = { auto: 'Tema: auto', light: 'Tema: chiaro', dark: 'Tema: scuro' };
-function applicaTema() { const t = ST.tema || 'auto'; if (t === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t; $('#bTema').textContent = { auto: '◐', light: '☀', dark: '☾' }[t]; $('#bTema').title = TEMI[t]; }
-$('#bTema').onclick = () => { ST.tema = { auto: 'light', light: 'dark', dark: 'auto' }[ST.tema || 'auto']; salva(); applicaTema(); toast(TEMI[ST.tema]); };
+function applicaTema() { const t = ST.tema || 'dark'; if (t === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t; $('#bTema').textContent = { auto: '◐', light: '☀', dark: '☾' }[t]; $('#bTema').title = TEMI[t]; }
+$('#bTema').onclick = () => { ST.tema = { dark: 'light', light: 'auto', auto: 'dark' }[ST.tema || 'dark']; salva(); applicaTema(); toast(TEMI[ST.tema]); };
 $('#selPg').onchange = e => { ST.attivo = e.target.value; salva(); disegna(); };
 document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => { ST.tab = b.dataset.tab; salva(); disegna(); window.scrollTo(0, 0); });
 
+// tendine dei livelli (Libro, Personaggio, Oggi): chiuse di base, lo stato si ricorda (Massy, 17/11)
+const aperto = k => !!(ST.aperti && ST.aperti[k]);
+document.addEventListener('click', e => { const b = e.target.closest('[data-tend]'); if (!b) return; ST.aperti = ST.aperti || {}; const k = b.dataset.tend; if (ST.aperti[k]) delete ST.aperti[k]; else ST.aperti[k] = true; salva(); disegna(); });
 function disegna() {
   riassunto();
   document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === ST.tab));
@@ -389,9 +402,11 @@ function cardClasse(pg, cl, i) {
     const norm = mie.filter(c => !c.r && !c.x).length, r = mie.filter(c => c.r).length, x = mie.filter(c => c.x).length;
     const nNorm = t ? t.n - t.r : 0, nR = t ? t.r : 0;
     const req = M.requisito(cl.punteggio, L);
-    h += `<div class="lvl"><div class="lvlh"><b>${L === 0 ? 'Livello 0' : L + '° livello'}</b><span class="small ${norm + r > (t ? t.n : 0) ? 'cond' : 'muted'}">${norm + r}/${t ? t.n : 0}${nR ? ` (${r}/${nR} R)` : ''}${x ? ` · ${x} extra` : ''}${req ? '' : ' · <span class="cond">serve ' + (10 + L) + '</span>'}</span></div>`;
-    h += `<ul class="inc">${mie.map(c => `<li><span class="n" data-vedi="${esc(keyCon(c))}" data-l="${L}">${esc(nomeCon(c))}</span>${c.r ? '<span class="tag r">R</span>' : ''}${c.x ? `<span class="tag x" title="${esc(c.fonte || '')}">extra</span>` : ''}<button class="mini" data-togli-inc="${esc(keyCon(c))}" aria-label="Togli">✕</button></li>`).join('')}</ul>`;
-    h += `<div class="row" style="margin-top:6px">${norm < nNorm ? `<button class="mini" data-agg="${L}">+ Dalla lista</button>` : ''}${nR && r < nR ? `<button class="mini" data-tirar="${L}" ${norm < nNorm ? 'disabled title="Prima i conosciuti normali"' : ''}>Tira la R</button><button class="mini" data-rmano="${L}">R a mano</button>` : ''}<button class="mini" data-extra="${L}">+ Extra</button></div></div>`;
+    const kt = `con:${pg.id}:${i}:${L}`, ap = aperto(kt);
+    h += `<div class="lvl"><button class="grp" data-tend="${kt}" aria-expanded="${ap}"><span>${L === 0 ? 'Livello 0' : L + '° livello'}</span><span class="small ${norm + r > (t ? t.n : 0) ? 'cond' : 'muted'}">${norm + r}/${t ? t.n : 0}${nR ? ` (${r}/${nR} R)` : ''}${x ? ` · ${x} extra` : ''}${req ? '' : ' · <span class="cond">serve ' + (10 + L) + '</span>'} ${ap ? '▾' : '▸'}</span></button>`;
+    if (ap) h += `<ul class="inc">${mie.map(c => `<li><span class="n" data-vedi="${esc(keyCon(c))}" data-l="${L}">${esc(nomeCon(c))}</span>${c.r ? '<span class="tag r">R</span>' : ''}${c.x ? `<span class="tag x" title="${esc(c.fonte || '')}">extra</span>` : ''}<button class="mini" data-togli-inc="${esc(keyCon(c))}" aria-label="Togli">✕</button></li>`).join('')}</ul>`;
+    if (ap) h += `<div class="row" style="margin-top:6px">${norm < nNorm ? `<button class="mini" data-agg="${L}" data-lib="${nNorm - norm}">+ Dalla lista</button>` : ''}${nR && r < nR ? `<button class="mini" data-tirar="${L}" ${norm < nNorm ? 'disabled title="Prima i conosciuti normali"' : ''}>Tira la R</button><button class="mini" data-rmano="${L}" data-lib="${nR - r}">R a mano</button>` : ''}<button class="mini" data-extra="${L}">+ Extra</button></div>`;
+    h += '</div>';
   }
   return h + '</div>';
 }
@@ -408,24 +423,38 @@ function legaClasse(pg, cl, i) {
   const so = r.querySelector('[data-sost]'); if (so) so.onclick = () => { cl.sost[cl.livello] = true; salva(); disegna(); };
   r.querySelectorAll('[data-vedi]').forEach(e => e.onclick = () => { const [s, v] = e.dataset.vedi.split('|'); apriScheda({ s: +s, v: v || undefined, cl, L: +e.dataset.l }); });
   r.querySelectorAll('[data-togli-inc]').forEach(e => e.onclick = () => { const k = e.dataset.togliInc; const c = cl.con.find(c => keyCon(c) === k); const via = () => { cl.con = cl.con.filter(c => keyCon(c) !== k); for (const L in cl.prep) cl.prep[L] = cl.prep[L].filter(x => x !== k); salva(); disegna(); }; if (c && c.r) chiedi('Incantesimo di ricerca', 'Le R non si sostituiscono con l’avanzare del livello. Toglierlo comunque?', via); else via(); });
-  r.querySelectorAll('[data-agg]').forEach(e => e.onclick = () => scegliDaLista(cl, +e.dataset.agg, {}));
-  r.querySelectorAll('[data-rmano]').forEach(e => e.onclick = () => scegliDaLista(cl, +e.dataset.rmano, { r: true }));
+  r.querySelectorAll('[data-agg]').forEach(e => e.onclick = () => scegliDaLista(cl, +e.dataset.agg, { lib: +e.dataset.lib }));
+  r.querySelectorAll('[data-rmano]').forEach(e => e.onclick = () => scegliDaLista(cl, +e.dataset.rmano, { r: true, lib: +e.dataset.lib }));
   r.querySelectorAll('[data-tirar]').forEach(e => e.onclick = () => tiraR(cl, +e.dataset.tirar));
   r.querySelectorAll('[data-extra]').forEach(e => e.onclick = () => scegliExtra(cl, +e.dataset.extra));
 }
 function voceLista(x) { return Array.isArray(x) ? { s: x[0], v: x[1] } : { s: x }; }
+// scelta di più conosciuti alla volta (v3, Massy 17/11): caselle, al massimo i posti liberi del livello
 function scegliDaLista(cl, L, opz) {
   const arr = (DATI.liste[cl.classe] || {})[L] || [];
   const presi = new Set(cl.con.map(keyCon));
+  const lib = opz.lib > 0 ? opz.lib : 1;
+  const scelti = new Set();
   const disegnaLista = filtro => arr.map((x, i) => ({ c: voceLista(x), i })).filter(({ c }) => !filtro || nomeCon(c).toLowerCase().includes(filtro))
-    .map(({ c, i }) => `<li><span class="num">${i + 1}.</span><span class="n" data-pick="${esc(keyCon(c))}">${esc(nomeCon(c))}</span>${presi.has(keyCon(c)) ? '<span class="tag">già conosciuto</span>' : `<button class="mini" data-scegli="${esc(keyCon(c))}">Scegli</button>`}</li>`).join('');
-  apri(`${opz.r ? 'R a mano' : 'Lista'} · ${cl.classe} ${L === 0 ? 'livello 0' : L + '°'}`, `<input id="cerca" placeholder="Cerca nella lista" autocomplete="off"><ul class="inc list-pick" id="lista">${disegnaLista('')}</ul>`, b => {
+    .map(({ c, i }) => { const k = keyCon(c); return `<li><span class="num">${i + 1}.</span><span class="n" data-pick="${esc(k)}">${esc(nomeCon(c))}</span>${presi.has(k) ? '<span class="tag">già conosciuto</span>' : `<input type="checkbox" data-sel="${esc(k)}" ${scelti.has(k) ? 'checked' : ''} ${!scelti.has(k) && scelti.size >= lib ? 'disabled' : ''} aria-label="Scegli">`}</li>`; }).join('');
+  apri(`${opz.r ? 'R a mano' : 'Lista'} · ${cl.classe} ${L === 0 ? 'livello 0' : L + '°'}`, `<input id="cerca" placeholder="Cerca nella lista" autocomplete="off"><ul class="inc list-pick" id="lista">${disegnaLista('')}</ul>
+    <div class="row piede"><span class="small muted grow" id="conta"></span><button class="pri" id="aggiungi" disabled>Aggiungi</button></div>`, b => {
+    const conta = () => { $('#conta', b).textContent = `Scelti ${scelti.size} su ${lib} ${lib === 1 ? 'posto libero' : 'posti liberi'}`; const a = $('#aggiungi', b); a.disabled = !scelti.size; a.textContent = scelti.size > 1 ? `Aggiungi ${scelti.size}` : 'Aggiungi'; };
     const lega = () => {
-      b.querySelectorAll('[data-scegli]').forEach(e => e.onclick = () => { const [s, v] = e.dataset.scegli.split('|'); cl.con.push({ s: +s, v: v || undefined, L, r: !!opz.r }); salva(); chiudi(); disegna(); });
+      b.querySelectorAll('[data-sel]').forEach(e => e.onchange = () => {
+        if (e.checked) scelti.add(e.dataset.sel); else scelti.delete(e.dataset.sel);
+        b.querySelectorAll('[data-sel]').forEach(x => { x.disabled = !x.checked && scelti.size >= lib; });
+        conta();
+      });
       b.querySelectorAll('[data-pick]').forEach(e => e.onclick = () => { const [s, v] = e.dataset.pick.split('|'); apriScheda({ s: +s, v: v || undefined, cl, L }); });
     };
-    lega();
+    lega(); conta();
     $('#cerca', b).oninput = e => { $('#lista', b).innerHTML = disegnaLista(e.target.value.toLowerCase()); lega(); };
+    $('#aggiungi', b).onclick = () => {
+      // nell'ordine della lista numerata
+      for (const x of arr) { const c = voceLista(x); if (scelti.has(keyCon(c))) cl.con.push({ s: c.s, v: c.v, L, r: !!opz.r }); }
+      const n = scelti.size; salva(); chiudi(); disegna(); toast(n > 1 ? `Aggiunti ${n} incantesimi` : 'Incantesimo aggiunto');
+    };
   });
 }
 function tiraR(cl, L) {
@@ -591,13 +620,16 @@ function tabOggi() {
   }
   h += '</div>';
   // preparati e lancio
-  h += `<div class="card"><h2>Incantesimi di oggi</h2><div class="small muted">Spunta i preparati (metà dei conosciuti per eccesso); tocca un nome per la scheda e il lancio.</div>`;
+  h += `<div class="card"><h2>Incantesimi di oggi</h2><div class="small muted">Tocca un livello per aprirlo; spunta i preparati (metà dei conosciuti per eccesso); tocca un nome per la scheda e il lancio.</div>`;
   for (const L of M.livelliMagia(cl.classe)) {
     const mie = cl.con.filter(c => c.L === L);
     if (!mie.length) continue;
     const prep = (cl.prep[L] || []).filter(k => mie.some(c => keyCon(c) === k));
     const max = M.preparabili(L, mie.length);
-    h += `<div class="lvl"><div class="lvlh"><b>${L === 0 ? 'Livello 0 (tutti preparati)' : L + '° livello'}</b>${L ? `<span class="small ${prep.length > max ? 'cond' : 'muted'}">preparati ${prep.length}/${max}</span>` : ''}</div><ul class="inc">`;
+    const kt = `oggi:${pg.id}:${pg.ci || 0}:${L}`, ap = aperto(kt);
+    h += `<div class="lvl"><button class="grp" data-tend="${kt}" aria-expanded="${ap}"><span>${L === 0 ? 'Livello 0 (tutti preparati)' : L + '° livello'}</span><span class="small ${prep.length > max ? 'cond' : 'muted'}">${L ? `preparati ${prep.length}/${max}` : mie.length} ${ap ? '▾' : '▸'}</span></button>`;
+    if (!ap) { h += '</div>'; continue; }
+    h += '<ul class="inc">';
     for (const c of mie) {
       const k = keyCon(c), p = L === 0 || prep.includes(k);
       h += `<li>${L ? `<input type="checkbox" data-prep="${esc(k)}" data-l="${L}" ${p ? 'checked' : ''} aria-label="Preparato">` : ''}<span class="n" data-lancia="${esc(k)}" data-l="${L}">${esc(nomeCon(c))}${c.r ? ' <span class="tag r">R</span>' : ''}${p ? '' : ' <span class="tag no">2 slot</span>'}</span></li>`;
@@ -610,9 +642,9 @@ function tabOggi() {
   document.querySelectorAll('[data-dot]').forEach(e => e.onclick = () => { const L = +e.dataset.dot; const u = cl.usati[L] || 0; cl.usati[L] = e.classList.contains('usato') ? Math.max(0, u - 1) : u + 1; salva(); disegna(); });
   document.querySelectorAll('[data-prep]').forEach(e => e.onchange = () => { const L = +e.dataset.l; const a = cl.prep[L] || (cl.prep[L] = []); if (e.checked) a.push(e.dataset.prep); else cl.prep[L] = a.filter(x => x !== e.dataset.prep); salva(); disegna(); });
   document.querySelectorAll('[data-lancia]').forEach(e => e.onclick = () => { const [s, v] = e.dataset.lancia.split('|'); apriScheda({ s: +s, v: v || undefined, cl, L: +e.dataset.l, lancio: true }); });
-  $('#bRiposo').onclick = () => chiedi('Riposo', 'Si azzerano slot, usi dello slot superiore, cariche delle cure, blocchi delle bacchette e reagenti giornalieri. I preparati restano quelli di ieri.', () => {
+  $('#bRiposo').onclick = () => chiedi('Riposo', 'Si azzerano slot, usi dello slot superiore, cariche, blocchi e sovraccarichi delle bacchette e reagenti giornalieri. I preparati restano quelli di ieri.', () => {
     for (const c of pg.classi) { c.usati = {}; c.sup = 0; }
-    for (const b of pg.bacchette) { b.bloccata = false; if (M.curaConCariche(nomeCon(b))) b.cariche = 3; }
+    for (const b of pg.bacchette) { b.bloccata = false; b.noSovr = false; b.cariche = b.max || 1; }
     for (const k in pg.reag) { const s = SC.find(x => x.k === k); const r = s && M.reagente(s.reag); if (!r || r.per === 'giorno') delete pg.reag[k]; }
     pg.annulla = null; salva(); disegna(); toast('Riposo fatto: scegli i preparati di oggi'); });
   $('#bSett').onclick = () => { for (const k in pg.reag) { const s = SC.find(x => x.k === k); const r = s && M.reagente(s.reag); if (r && r.per === 'settimana') delete pg.reag[k]; } salva(); toast('Reagenti settimanali azzerati'); };
@@ -654,7 +686,7 @@ function legaConc(pg, cl, ctx) {
 }
 
 // ---------------------------------------------------------------- scheda «Libro»
-let filtri = { q: '', classe: '', L: '', scuola: '', n: 60 };
+let filtri = { q: '', classe: '', L: '', scuola: '', n: 60, aperti: {} };
 function tabLibro() {
   const cl = CLS();
   if (filtri.classe === '' && !filtri._init) { filtri.classe = cl.classe; filtri._init = true; }
@@ -676,6 +708,17 @@ function tabLibro() {
     }
     out = out.filter(c => (!q || nomeCon(c).toLowerCase().includes(q)) && (!filtri.scuola || SC[c.s].scuola === filtri.scuola));
     const tot = out.length;
+    // liste di classe senza livello scelto: un titolo per livello, chiuso, che si apre al tocco (Massy, 17/11);
+    // con una ricerca per nome i livelli con risultati si aprono da soli
+    if (filtri.classe && filtri.classe !== 'concessi' && filtri.L === '') {
+      const gruppi = {}; out.forEach(c => (gruppi[c.L] = gruppi[c.L] || []).push(c));
+      const riga = c => `<li><span class="num">${c.num}.</span><span class="n" data-lv="${esc(keyCon(c))}" data-l="${c.L}">${esc(nomeCon(c))} <span class="muted small">${esc(SC[c.s].scuola)}</span></span></li>`;
+      $('#lris').innerHTML = Object.keys(gruppi).sort((a, b) => a - b).map(L => { const ap = !!q || !!filtri.scuola || filtri.aperti[L];
+        return `<li class="grp"><button class="grp" data-apri="${L}" aria-expanded="${ap}"><span>${+L === 0 ? 'Livello 0' : L + '° livello'}</span><span class="muted small">${gruppi[L].length} ${ap ? '▾' : '▸'}</span></button></li>` + (ap ? gruppi[L].map(riga).join('') : ''); }).join('') || '<li class="muted">Nessun risultato.</li>';
+      document.querySelectorAll('[data-apri]').forEach(e => e.onclick = () => { const L = e.dataset.apri; if (q || filtri.scuola) return; filtri.aperti[L] = !filtri.aperti[L]; agg(); });
+      document.querySelectorAll('[data-lv]').forEach(e => e.onclick = () => { const [s, v] = e.dataset.lv.split('|'); apriScheda({ s: +s, v: v || undefined, L: +e.dataset.l }); });
+      return;
+    }
     $('#lris').innerHTML = out.slice(0, filtri.n).map(c => `<li><span class="num">${c.num ? c.num + '.' : ''}</span><span class="n" data-lv="${esc(keyCon(c))}" data-l="${c.L ?? ''}">${esc(nomeCon(c))} <span class="muted small">${esc(SC[c.s].scuola)}${c.L != null ? ' · ' + c.L + '°' : ''}${SC[c.s].mod ? ' · ◆' : ''}</span></span></li>`).join('') +
       (tot > filtri.n ? `<li><button id="lpiu" class="grow">Mostra altri (${tot - filtri.n})</button></li>` : '') + (tot ? '' : '<li class="muted">Nessun risultato.</li>');
     document.querySelectorAll('[data-lv]').forEach(e => e.onclick = () => { const [s, v] = e.dataset.lv.split('|'); apriScheda({ s: +s, v: v || undefined, L: e.dataset.l === '' ? undefined : +e.dataset.l }); });
@@ -694,7 +737,7 @@ function tabOggetti() {
   let h = `<section class="panel due"><div class="card"><h2>Pergamene</h2><ul class="inc">${pg.pergamene.map((o, i) => rigaOgg(pg, o, i, 'p')).join('') || '<li class="muted">Nessuna pergamena.</li>'}</ul><button style="margin-top:8px" data-nuovo="p">+ Pergamena</button></div>
    <div class="card"><h2>Bacchette</h2>${nb > 5 ? '<div class="avviso">Più di 5 bacchette per personaggio (Vol. 3, Limiti delle bacchette).</div>' : ''}${dup ? '<div class="avviso">Due bacchette dello stesso incantesimo (massimo una per tipo).</div>' : ''}
    <ul class="inc">${pg.bacchette.map((o, i) => rigaOgg(pg, o, i, 'b')).join('') || '<li class="muted">Nessuna bacchetta.</li>'}</ul><button style="margin-top:8px" data-nuovo="b">+ Bacchetta</button>
-   <div class="small muted" style="margin-top:6px">Le bacchette non hanno cariche, tranne le Cura ferite (3 al giorno). Utilizzare congegni magici: bonus +${pg.ucm + M.somma(pg.bonus, 'ucm')}.</div></div></section>`;
+   <div class="small muted" style="margin-top:6px">Ogni bacchetta ha 1 carica al giorno; quelle di tipo Cura fino a 3. Si ricaricano col Riposo. Un incantatore può sovraccaricarle (casella in «Usa»). Utilizzare congegni magici: bonus +${pg.ucm + M.somma(pg.bonus, 'ucm')}.</div></div></section>`;
   $('#main').innerHTML = h;
   document.querySelectorAll('[data-nuovo]').forEach(e => e.onclick = () => nuovoOgg(pg, e.dataset.nuovo));
   document.querySelectorAll('[data-usa]').forEach(e => e.onclick = () => { const [t, i] = e.dataset.usa.split(':'); usaOgg(pg, t, +i); });
@@ -703,8 +746,8 @@ function tabOggetti() {
 }
 function rigaOgg(pg, o, i, t) {
   const lista = nellaLista(pg, o);
-  const car = t === 'b' && o.cariche != null ? ` · cariche ${o.cariche}/3` : '';
-  return `<li><span class="n" data-vo="${t}:${i}">${esc(nomeCon(o))}${t === 'p' && o.q > 1 ? ' ×' + o.q : ''}<br><span class="small muted">${o.L}° · LI ${o.li} · CD ${o.cd}${car}${lista ? ' · nella tua lista' : ' · serve UCM'}${o.bloccata ? ' · <span class="cond">bloccata fino al riposo</span>' : ''}</span></span><button class="mini pri" data-usa="${t}:${i}" ${o.bloccata || (o.cariche === 0) ? 'disabled' : ''}>Usa</button><button class="mini" data-delo="${t}:${i}" aria-label="Elimina">✕</button></li>`;
+  const car = t === 'b' ? ` · cariche ${o.cariche}/${o.max || 1}` : '';
+  return `<li><span class="n" data-vo="${t}:${i}">${esc(nomeCon(o))}${t === 'p' && o.q > 1 ? ' ×' + o.q : ''}<br><span class="small muted">${o.L}° · LI ${o.li} · CD ${o.cd}${car}${lista ? ' · nella tua lista' : ' · serve UCM'}${o.bloccata ? ' · <span class="cond">bloccata fino al riposo</span>' : ''}${o.noSovr ? ' · niente sovraccarico fino al riposo' : ''}</span></span><button class="mini pri" data-usa="${t}:${i}" ${o.bloccata || (o.cariche === 0) ? 'disabled' : ''}>Usa</button><button class="mini" data-delo="${t}:${i}" aria-label="Elimina">✕</button></li>`;
 }
 function nuovoOgg(pg, t) {
   scegliScheda(t === 'p' ? 'Nuova pergamena' : 'Nuova bacchetta', c => {
@@ -713,7 +756,8 @@ function nuovoOgg(pg, t) {
       apri((t === 'p' ? 'Pergamena: ' : 'Bacchetta: ') + nomeCon(c), `<div class="grid2"><label class="f">Livello<select id="L">${(t === 'b' ? [0, 1, 2, 3, 4] : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]).map(x => `<option ${x === L ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
         <label class="f">Livello di incantatore<input id="li" type="number" inputmode="numeric" value="${M.liMinimo(L)}"></label>
         <label class="f">CD<input id="cd" type="number" inputmode="numeric" value="${M.cdOggetto(L, true)}"></label>
-        ${t === 'p' ? '<label class="f">Quantità<input id="q" type="number" inputmode="numeric" value="1"></label>' : ''}</div>
+        ${t === 'p' ? '<label class="f">Quantità<input id="q" type="number" inputmode="numeric" value="1"></label>' : ''}
+        ${t === 'b' && M.curaConCariche(nomeCon(c)) ? '<label class="f">Cariche al giorno<select id="car"><option>1</option><option>2</option><option selected>3</option></select></label>' : ''}</div>
         <label class="row"><input type="checkbox" id="rit" checked> <span>Ritrovato (CD +1, Manuale dei Tesori)</span></label>
         <button class="pri" id="ok">Aggiungi</button>`, b => {
         $('#L', b).onchange = () => { L = +$('#L', b).value; disegnaF(); };
@@ -721,7 +765,7 @@ function nuovoOgg(pg, t) {
         $('#ok', b).onclick = () => {
           const o = { s: c.s, v: c.v, L: +$('#L', b).value, li: +$('#li', b).value || 1, cd: +$('#cd', b).value, rit: $('#rit', b).checked };
           if (t === 'p') { o.q = Math.max(1, +$('#q', b).value || 1); pg.pergamene.push(o); }
-          else { if (M.curaConCariche(nomeCon(o))) o.cariche = 3; pg.bacchette.push(o); }
+          else { const cs = $('#car', b); o.max = M.caricheMax(nomeCon(o), cs ? cs.value : 1); o.cariche = o.max; pg.bacchette.push(o); }
           salva(); chiudi(); disegna();
         };
       });
@@ -732,18 +776,40 @@ function nuovoOgg(pg, t) {
 function usaOgg(pg, t, i) {
   const o = (t === 'p' ? pg.pergamene : pg.bacchette)[i];
   const ucm = pg.ucm + M.somma(pg.bonus, 'ucm');
-  const consuma = () => { if (t === 'p') { o.q = (o.q || 1) - 1; if (o.q <= 0) pg.pergamene.splice(i, 1); } else if (o.cariche != null) o.cariche = Math.max(0, o.cariche - 1); salva(); chiudi(); disegna(); toast('Usata: <b>' + esc(nomeCon(o)) + '</b>'); };
+  const consuma = () => { if (t === 'p') { o.q = (o.q || 1) - 1; if (o.q <= 0) pg.pergamene.splice(i, 1); } else o.cariche = Math.max(0, (o.cariche == null ? 1 : o.cariche) - 1); salva(); chiudi(); disegna(); toast('Usata: <b>' + esc(nomeCon(o)) + '</b>'); };
+  // sovraccarico (Vol. 3, solo bacchette): casella nei due dialoghi; «Usa»/«Riuscita» passano alla prova di incantatore
+  const sv = t === 'b' ? datiSovr(pg, o) : null;
+  const casella = !sv ? '' : o.noSovr ? '<p class="small muted">Sovraccarico non disponibile fino al Riposo (prova fallita).</p>'
+    : `<label class="row"><input type="checkbox" id="sovr"> <span>Sovraccarica: prova di incantatore CD ${sv.cd} (d20 ≥ ${M.servePerCD(sv.li, sv.cd)}) → LI ${sv.li}, CD ${sv.cdInc}</span></label>`;
+  const avanti = b => { const c = $('#sovr', b); if (c && c.checked) sovraccarica(pg, o, sv, consuma); else consuma(); };
   if (nellaLista(pg, o)) {
-    apri('Usa: ' + nomeCon(o), `<p>L'incantesimo è nella tua lista: niente prova. LI ${o.li}, CD ${o.cd}. Niente metamagia.</p><div class="row"><button class="pri" id="ok">Usa</button><button id="sch">Scheda</button></div>`, b => { $('#ok', b).onclick = consuma; $('#sch', b).onclick = () => apriScheda({ s: o.s, v: o.v, L: o.L, liOgg: o.li, cdOgg: o.cd, oggetto: true }); });
+    apri('Usa: ' + nomeCon(o), `<p>L'incantesimo è nella tua lista: niente prova. LI ${o.li}, CD ${o.cd}. Niente metamagia.</p>${casella}<div class="row"><button class="pri" id="ok">Usa</button><button id="sch">Scheda</button></div>`, b => { $('#ok', b).onclick = () => avanti(b); $('#sch', b).onclick = () => apriScheda({ s: o.s, v: o.v, L: o.L, liOgg: o.li, cdOgg: o.cd, oggetto: true }); });
     return;
   }
   const cd = t === 'p' ? M.cdUcmPergamena(o.li) : M.CD_UCM_BACCHETTA;
-  apri('Usa: ' + nomeCon(o), `<p>Non è nella tua lista: prova di Utilizzare congegni magici <b>CD ${cd}</b>, bonus +${ucm}.</p><p class="big">d20 ≥ ${M.servePerCD(ucm, cd)}</p>
+  apri('Usa: ' + nomeCon(o), `<p>Non è nella tua lista: prova di Utilizzare congegni magici <b>CD ${cd}</b>, bonus +${ucm}.</p><p class="big">d20 ≥ ${M.servePerCD(ucm, cd)}</p>${casella}
     <div class="row"><button id="tira">Tira</button><button class="pri" id="ok">Riuscita</button><button id="ko">Fallita</button>${t === 'b' ? '<button class="warn" id="ko5">Fallita di 5+</button>' : ''}</div><div id="ris"></div>`, b => {
     $('#tira', b).onclick = () => { const r = M.tira('1d20').tot; const tot = r + ucm; $('#ris', b).innerHTML = `1d20 (${r}) + ${ucm} = <b>${tot}</b> → ${tot >= cd ? 'riuscita' : (t === 'b' && tot <= cd - 5 ? '<span class="cond">fallita di 5 o più</span>' : 'fallita')}`; };
-    $('#ok', b).onclick = consuma;
+    $('#ok', b).onclick = () => avanti(b);
     $('#ko', b).onclick = () => { chiudi(); toast('Prova fallita'); };
     const k5 = $('#ko5', b); if (k5) k5.onclick = () => { o.bloccata = true; salva(); chiudi(); disegna(); toast('Bacchetta inutilizzabile fino all’alba'); };
+  });
+}
+// LI e CD dell'utilizzatore: la classe che ha l'incantesimo in lista, altrimenti quella attiva
+function datiSovr(pg, o) {
+  const cl = pg.classi.find(c => livelloLista(c.classe, o.s, o.v) != null) || CLS(pg);
+  const ctx = ctxDi(pg, cl), s = SC[o.s], li = M.LI(ctx, s);
+  return { cl, li, cd: M.cdSovraccarico(o.L, li), cdInc: M.CD(ctx, s, o.L) };
+}
+function sovraccarica(pg, o, sv, consuma) {
+  const scheda = (li, cd) => apriScheda({ s: o.s, v: o.v, L: o.L, liOgg: li, cdOgg: cd, oggetto: true });
+  apri('Sovraccarica: ' + nomeCon(o), `<p>Prova di incantatore (${esc(sv.cl.classe)}): 1d20 + ${sv.li} contro <b>CD ${sv.cd}</b> (7 + livello ${o.L} + LI ${sv.li}).</p><p class="big">d20 ≥ ${M.servePerCD(sv.li, sv.cd)}</p>
+    <p class="small">Riuscita: LI ${sv.li} e CD ${sv.cdInc}, senza talenti. Fallita: l'incantesimo parte con i valori della bacchetta (LI ${o.li}, CD ${o.cd}) e non si sovraccarica più fino al Riposo. In entrambi i casi si consuma la carica.</p>
+    <div class="avviso">Agli incantesimi sovraccaricati si applica la regola opzionale Maledizione di Tzeentch (Vol. 3): chiedi al DM.</div>
+    <div class="row"><button id="tira">Tira</button><button class="pri" id="ok">Riuscita</button><button id="ko">Fallita</button></div><div id="ris"></div>`, b => {
+    $('#tira', b).onclick = () => { const r = M.tira('1d20').tot; const tot = r + sv.li; $('#ris', b).innerHTML = `1d20 (${r}) + ${sv.li} = <b>${tot}</b> → ${tot >= sv.cd ? 'riuscita' : '<span class="cond">fallita</span>'}`; };
+    $('#ok', b).onclick = () => { consuma(); toast(`Sovraccaricata: LI ${sv.li}, CD ${sv.cdInc}`); scheda(sv.li, sv.cdInc); };
+    $('#ko', b).onclick = () => { o.noSovr = true; consuma(); toast('Sovraccarico fallito: valori della bacchetta'); scheda(o.li, o.cd); };
   });
 }
 

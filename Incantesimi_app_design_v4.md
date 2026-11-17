@@ -1,6 +1,6 @@
-# Libro degli incantesimi — design dell'app v2
+# Libro degli incantesimi — design dell'app v4
 
-STATO LAVORO: design confermato da Massy a blocchi il 16/11/2026 (blocchi 1–5); v2: bonus di livello 0 anche per Magus, Necrarca e Sigillatore. Prossimo passo: repo `biti87-arch/incantesimi`, parser, motore con test, pagina di prova come artifact.
+STATO LAVORO: design confermato da Massy a blocchi il 16/11/2026 (blocchi 1–5); v2: bonus di livello 0 anche per Magus, Necrarca e Sigillatore; app v1.0.1 rilasciata il 16/11. **v3 (17/11/2026)**: bacchette con 1 carica al giorno come nel Vol. 3 (H2), dati riallineati a Vol. 2 2.5.20, Vol. 3 2.5.10 e Vol. 4 2.4.2 (§14), confermati da Massy. **v4 (17/11)**: sovraccarico delle bacchette (H3), tema scuro di base (§0), più conosciuti scelti alla volta (B1). Prossimo passo: prova della pagina da parte di Massy, poi push (APK e Windows).
 
 ## 0. Identità
 
@@ -14,24 +14,24 @@ STATO LAVORO: design confermato da Massy a blocchi il 16/11/2026 (blocchi 1–5)
 | Piattaforme | Android (Capacitor) e Windows (Electron) |
 | Dati utente | `localStorage`, chiave `libro-incantesimi-v1` |
 
-**Priorità di progetto: il telefono.** Una colonna, pulsanti grandi (almeno 44 px), barra in basso con quattro schede: **Personaggio · Oggi · Libro · Oggetti**. Su Windows la stessa pagina si apre su due colonne (elenco a sinistra, scheda a destra). Stile della Collana: oro #8B6914 / #D4A84B, fondi #F5EDD0 / #FAF3E0, titoli Georgia #C45911, condizioni in rosso #C00000.
+**Priorità di progetto: il telefono.** Una colonna, pulsanti grandi (almeno 44 px), barra in basso con quattro schede: **Personaggio · Oggi · Libro · Oggetti**. Su Windows la stessa pagina si apre su due colonne (elenco a sinistra, scheda a destra). Stile della Collana: oro #8B6914 / #D4A84B, fondi #F5EDD0 / #FAF3E0, titoli Georgia #C45911, condizioni in rosso #C00000. **Tema scuro di base** (Massy, 17/11): il pulsante del tema passa scuro → chiaro → automatico (segue il sistema) → scuro; la scelta si salva.
 
 ## 1. Fonti dei dati
 
 | Dato | Fonte | File dei dati |
 |---|---|---|
-| 1.708 schede (1.650 delle liste + 58 concesse dai privilegi) | Vol. 4 2.4.1 (docx), Cap. 3 | `schede.json` |
-| 15 liste con la numerazione per livello (servono le R) | Vol. 4 2.4.1, Cap. 2 | `liste.json` |
-| Conosciuti e lanciabili per gruppo (9°, 6°, 4°), con le «R» | Vol. 4 2.4.1, Cap. 1 | `tabelle.json` |
-| Modificatori di caratteristica e incantesimi bonus (1–45) | Vol. 4 2.4.1, Cap. 1 | `tabelle.json` |
-| CD delle prove di Concentrazione (12 righe) | Vol. 4 2.4.1, Cap. 1 | `tabelle.json` |
-| Caratteristica da incantatore, gruppo, bonus di livello 0 | Vol. 2 2.5.19 | `classi.json` (a mano, con controllo nel parser) |
-| Metamagia: i 20 talenti del Vol. 3 | Vol. 3 2.5.9 | `metamagia.json` |
-| Metamagia: i 44 talenti di Golarion | pagine di golarion.altervista.org | `metamagia.json` |
+| 1.708 schede (1.650 delle liste + 58 concesse dai privilegi) | Vol. 4 2.4.2 (docx), Cap. 3 | `schede.json` |
+| 15 liste con la numerazione per livello (servono le R) | Vol. 4 2.4.2, Cap. 2 | `liste.json` |
+| Conosciuti e lanciabili per gruppo (9°, 6°, 4°), con le «R» | Vol. 4 2.4.2, Cap. 1 | `tabelle.json` |
+| Modificatori di caratteristica e incantesimi bonus (1–45) | Vol. 4 2.4.2, Cap. 1 | `tabelle.json` |
+| CD delle prove di Concentrazione (12 righe) | Vol. 4 2.4.2, Cap. 1 | `tabelle.json` |
+| Caratteristica da incantatore, gruppo, bonus di livello 0 | Vol. 2 2.5.20 | `classi.json` (a mano, con controllo nel parser) |
+| Metamagia: i 22 talenti del Vol. 3 | Vol. 3 2.5.10 | `metamagia.json` |
+| Metamagia: i 43 talenti di Golarion (44 estratti, Incantesimi tenaci vale quello del Vol. 3) | pagine di golarion.altervista.org | `metamagia.json` |
 | Modelli di bonus (talenti comuni) | golarion | `modelli.json` |
 
 - Il parser legge il docx (regex sull'XML con i flag, come le altre app). I campi delle schede sono: Scuola, Livello, Tempo di lancio, Componenti, Raggio d'azione, Bersaglio/Area/Effetto, Durata, Tiro Salvezza, Resistenza agli incantesimi, Concesso da, più la descrizione.
-- Il parser confronta le tabelle per gruppo del Vol. 4 con quelle di ogni classe del Vol. 2 2.5.19 e **segnala** le differenze senza scegliere. Nota: il vecchio `tabelle_vol2_2.5.18.json` della Fase 4 non ha la colonna 0 dei lanciabili dell'Inquisitore, che invece c'è nel Vol. 2 2.5.19: si legge dai volumi correnti, non da quel JSON.
+- Il parser confronta le tabelle per gruppo del Vol. 4 con quelle di ogni classe del Vol. 2 corrente e **segnala** le differenze senza scegliere. Nota: il vecchio `tabelle_vol2_2.5.18.json` della Fase 4 non ha la colonna 0 dei lanciabili dell'Inquisitore, che invece c'è nel Vol. 2 2.5.19: si legge dai volumi correnti, non da quel JSON.
 - **Formule dei danni**: il parser riconosce i modelli «XdY per livello (massimo ZdY)», «ogni N livelli», «+1 per livello (massimo +N)», ecc. (circa 244 schede con dadi che crescono col livello; le altre 308 con dadi hanno dadi fissi). Quelle che non riconosce vanno in un elenco di segnalazioni e, se servono, in `CORREZIONI` in fondo al parser, come nell'Officina.
 
 ## 2. Classi (`classi.json`)
@@ -41,15 +41,15 @@ STATO LAVORO: design confermato da Massy a blocchi il 16/11/2026 (blocchi 1–5)
 | Arcanista | Int | 9° | sì |
 | Druido | Sag | 9° | sì |
 | Fattucchiere | Int | 9° | sì |
-| Necrarca | Car | 9° | sì (vedi §12) |
+| Necrarca | Car | 9° | sì |
 | Oracolo | Car | 9° | sì |
 | Sacerdote | Sag o Car (scelta) | 9° | sì |
 | Stregone | Int o Car (scelta) | 9° | sì |
 | Bardo | Car | 6° | sì |
 | Convocatore | Car | 6° | sì |
 | Inquisitore | Sag | 6° | sì |
-| Magus | Int | 6° | sì (vedi §12) |
-| Sigillatore | Int | 6° | sì (vedi §12) |
+| Magus | Int | 6° | sì |
+| Sigillatore | Int | 6° | sì |
 | Guardia Nera | Car | 4° | (niente liv. 0) |
 | Paladino | Car | 4° | (niente liv. 0) |
 | Ranger | Sag | 4° | (niente liv. 0) |
@@ -65,7 +65,7 @@ La caratteristica resta modificabile a mano (archetipi come il vessatore). Ogni 
 
 ## 4. Incantesimi conosciuti (blocco 5)
 
-- **B1** Contatore per livello di magia, ad esempio «6/8 (1 R)», dalle tabelle per gruppo. Si aggiungono dalla lista della classe, con la numerazione del Cap. 2.
+- **B1** Contatore per livello di magia, ad esempio «6/8 (1 R)», dalle tabelle per gruppo. Si aggiungono dalla lista della classe, con la numerazione del Cap. 2, **più alla volta** (Massy, 17/11): una casella per incantesimo, al massimo i posti liberi del livello (le altre caselle si spengono), poi «Aggiungi N»; vale anche per le R a mano. Il tocco sul nome apre la scheda.
 - **B2** **Tiro delle R**: il pulsante si attiva quando i conosciuti normali di quel livello sono completi (le R si determinano DOPO quelli normali). Tira sulla numerazione della lista di quel livello e ritira se esce un incantesimo già conosciuto. Le R restano segnate e non si sostituiscono.
 - **B3** **R inserite a mano** (Massy, 16/11): per i personaggi già creati che hanno già tirato le R, ogni casella R si può riempire scegliendo l'incantesimo dalla lista, senza tiro e senza la regola dell'ordine. Resta segnato come R a tutti gli effetti.
 - **B4** **Extra a mano**: ricerca su tutte le 1.708 schede, con l'etichetta «extra» e una nota sulla fonte (talento, dote, privilegio…). Non contano nel contatore. Livello: quello della lista della propria classe se c'è, altrimenti si sceglie fra i livelli indicati nella scheda.
@@ -137,7 +137,7 @@ La caratteristica resta modificabile a mano (archetipi come il vessatore). Ogni 
 | Azione o componenti | Rapidi, Silenziosi, Immobili | Tempo di lancio o Componenti corretti |
 | Solo nota | tutti gli altri (Golarion e Vol. 3) | incremento allo slot + riga riassuntiva |
 
-- **E7** Incrementi e note di tutti i talenti letti dalle pagine (Vol. 3 per i suoi 20, golarion per i 44) durante l'estrazione dei dati, e ricontrollati uno per uno. I numeri della proposta del 16/11 (Estesi +1, Ingranditi +1, Ampliati +3, Potenziati +2, Massimizzati +3, Rapidi +4, Silenziosi +1, Immobili +1, Intensi +1, con Portata +1 per gradino, Penetranti +1) vanno confermati sulle fonti.
+- **E7** Incrementi e note di tutti i talenti letti dalle pagine (Vol. 3 per i suoi 22, golarion per i 43) durante l'estrazione dei dati, e ricontrollati uno per uno. I numeri della proposta del 16/11 (Estesi +1, Ingranditi +1, Ampliati +3, Potenziati +2, Massimizzati +3, Rapidi +4, Silenziosi +1, Immobili +1, Intensi +1, con Portata +1 per gradino, Penetranti +1) vanno confermati sulle fonti.
 
 ## 8. Schermata «Oggi» (blocco 4)
 
@@ -154,7 +154,7 @@ La caratteristica resta modificabile a mano (archetipi come il vessatore). Ogni 
 - **F6** **Reagenti** (componenti M con un costo): fino a 250 mo 2 al giorno; 251–500 mo 1 al giorno; 501–999 mo 1 alla settimana; da 1.000 mo il prezzo è da pagare a ogni lancio (mostrato in rosso).
 - **F7** **Incantesimi attivi**: ogni lancio con durata entra in elenco con il tempo rimasto. Pulsanti: «Round successivo», «+1 minuto», «+10 minuti», «+1 ora». Quelli a Concentrazione hanno l'etichetta «azione standard ogni round»; quelli (I) e a Concentrazione hanno «Termina». Allo scadere l'incantesimo sparisce con un avviso.
 - **F8** Pulsante «Tira» opzionale su danni, Concentrazione e RI, con il risultato in un riquadro.
-- **F9** **Riposo**: azzera slot, usi dello slot superiore, cariche delle cure, blocchi delle bacchette e reagenti giornalieri, poi apre la scelta dei preparati. **Nuova settimana** (menu) azzera i reagenti settimanali.
+- **F9** **Riposo**: azzera slot, usi dello slot superiore, cariche, blocchi e sovraccarichi falliti delle bacchette e reagenti giornalieri, poi apre la scelta dei preparati. **Nuova settimana** (menu) azzera i reagenti settimanali.
 
 ## 9. Libro
 
@@ -164,7 +164,16 @@ La caratteristica resta modificabile a mano (archetipi come il vessatore). Ogni 
 ## 10. Oggetti (blocchi 1 e 5)
 
 - **H1** **Pergamene**: incantesimo, livello, LI (predefinito 2 × livello − 1; livello 0 → 1), CD = 10 + livello + ⌊livello/2⌋, +1 se «ritrovata» (spuntato di default: Manuale dei Tesori, CD degli oggetti ritrovati +1), quantità; tutti i valori modificabili. Usarla toglie 1 dalla quantità. Se l'incantesimo è nella lista della classe si usa e basta; altrimenti prova di Utilizzare congegni magici CD 20 + LI della pergamena, con «serve d20 ≥ N». Niente metamagia.
-- **H2** **Bacchette**: livello **0–4** (Massy, 16/11: il «tra lo 0 e il 3°» del Vol. 3 è un errore), CD come le pergamene. Se l'incantesimo non è nella lista, prova di Utilizzare congegni magici CD 20; il pulsante «Fallita di 5+» la blocca fino al Riposo. **Nessuna carica**, tranne Cura ferite leggere, moderate, gravi e critiche (anche *contingente*): **3 cariche al giorno**, ricaricate dal Riposo (Massy, 16/11). Avviso oltre 5 bacchette per personaggio o con 2 bacchette dello stesso incantesimo (Vol. 3, «Limiti delle bacchette»). Niente metamagia.
+- **H2** **Bacchette** (v3, 17/11; fa fede il Vol. 3 2.5.10, «Numero di cariche»: Massy, 16/11): livello **0–4**, CD come le pergamene.
+  - **1 carica al giorno** per ogni bacchetta; le bacchette di tipo **Cura** fino a **3**: *Cura ferite leggere, moderate, gravi, critiche*, le *contingente* e *Cura ferite minori contingente* (1°, anche lei «di tipo Cura»; le *di massa* sono oltre il 4°). Il numero (1–3, predefinito 3) si sceglie quando si aggiunge la bacchetta, perché il Vol. 3 ne moltiplica il costo per le cariche; la riga mostra «cariche N/max» e «Usa» si spegne a 0.
+  - Le cariche si rinnovano «all'alba del giorno seguente»: nell'app col **Riposo**, insieme ai blocchi.
+  - Se l'incantesimo non è nella lista, prova di Utilizzare congegni magici CD 20: riuscita consuma la carica, fallita no; il pulsante «Fallita di 5+» la blocca fino al Riposo (resta com'era).
+  - Bacchette salvate con la v1.0.1: alla prima apertura prendono 1 carica (le Cura 3, con le cariche che avevano).
+  - Avviso oltre 5 bacchette per personaggio o con 2 bacchette dello stesso incantesimo (Vol. 3, «Limiti delle bacchette»). Niente metamagia.
+- **H3** **Sovraccaricare una bacchetta** (Vol. 3; Massy, 17/11): casella «Sovraccarica» nel dialogo «Usa», sia con l'incantesimo in lista sia dopo la prova di Utilizzare congegni magici.
+  - Prova di incantatore 1d20 + LI dell'utilizzatore, **CD 7 + livello dell'incantesimo + LI dell'utilizzatore** (in pratica d20 ≥ 7 + livello). LI e CD sono quelli della classe che ha l'incantesimo in lista, altrimenti della classe attiva.
+  - Riuscita: l'incantesimo usa LI e CD dell'utilizzatore (10 + livello + bonus della caratteristica + bonus di CD), senza talenti. Fallita: l'incantesimo parte comunque con i valori della bacchetta e quella bacchetta non si sovraccarica più fino al Riposo. In entrambi i casi si consuma la carica.
+  - Promemoria nel dialogo: «si applica la regola opzionale Maledizione di Tzeentch (Vol. 3): chiedi al DM».
 
 ## 11. Fuori dall'app
 
@@ -172,9 +181,12 @@ Riserve di classe (Scorta arcana, Riserva arcana e simili: Tracker di classe, ri
 
 ## 12. Punti aperti
 
-- **Vol. 2, Magus, Necrarca, Sigillatore**: nel paragrafo «Incantesimi» manca la frase «Si ottengono anche incantesimi lanciabili bonus di livello 0, come fossero di 1° livello.» È una dimenticanza (Massy, 16/11): il bonus di livello 0 vale anche per loro; l'app lo applica già, il Vol. 2 va corretto alla prossima patch.
-- **Vol. 3, Bacchette**: «un incantesimo casuale di un livello compreso tra lo 0 e il 3°» → 0 e il 4° (Massy, 16/11).
-- **Vol. 3, Incantesimi a catena**: requisito «Incantesimi penetranti» → **Incantesimi Inarrestabili** (su golarion «Incantesimi Penetranti» è il talento di metamagia Piercing Spell).
+- ✅ Vol. 2, Magus, Necrarca, Sigillatore: frase del bonus di livello 0 (Vol. 2 2.5.20, 16/11).
+- ✅ Vol. 3, Bacchette 0–4° e Incantesimi a catena con requisito Incantesimi Inarrestabili (Vol. 3 2.5.10, 16/11).
+- ✅ Vol. 3, Incantesimo ingannatore e Incantesimo consacrato: riga «Incremento di livello» (Vol. 3 2.5.10); `META_INC` del parser ora è vuoto.
+- **Schede con danni non da formula**: 11 schede con dadi e «livello» che i modelli non riconoscono (Ora della dipartita, Colpo doloroso, Infusione elementale, Lance di ghiaccio, Ostacolare evocazione, Richiesta planare, Cerchi di debilitazione, Colpo doloroso di massa, Teschio esplosivo necrotico, Kraken d'ombra, Eruzione ectoplasmatica): mostrano il testo com'è; se servono, formule a mano in `CORREZIONI` di `parse_incantesimi.py`.
+- **Maledizione di Tzeentch**: il Vol. 3 la cita due volte come «regola opzionale» (sovraccarico delle bacchette; Essenza di acciaio arcano: «lanciare gratuitamente gli incantesimi con un risultato di 19-20 (anziché di 20)»), ma nessun manuale della Collana la descrive (cercata in Vol. 1–4, Guida del DM e manuali aggiuntivi il 17/11). L'app mostra solo il promemoria; se la regola viene scritta, si può aggiungere il test al dialogo del sovraccarico.
+- Prova dell'APK e dell'app Windows sul telefono e sul PC (Massy).
 
 ## 13. Piano dei lavori
 
@@ -184,3 +196,10 @@ Riserve di classe (Scorta arcana, Riserva arcana e simili: Tracker di classe, ri
 4. `template.html` per il telefono, `build.py`, prova con Playwright a 390 px.
 5. Pagina web pubblicata come artifact per la prova di Massy; correzioni.
 6. Icona, `controlla_app.py`, primo push, Releases (APK e Windows); righe in `app.tsv`, `app.md` e nello stato.
+
+## 14. Versioni
+
+| App | Data | Cosa |
+|---|---|---|
+| v1.0.1 / win-1.0.1 | 16/11/2026 | prima versione (design v2): Vol. 4 2.4.1, Vol. 2 2.5.19, Vol. 3 2.5.9 |
+| prossima | 17/11/2026 | design v4: sovraccarico (H3), tema scuro di base, più conosciuti alla volta; design v3: bacchette con 1 carica al giorno (H2); Vol. 4 2.4.2 (raggi di Bolle di sapone, Brontolare, Evoca Amarok, Muro di tenebre), Vol. 2 2.5.20 (nessuna differenza nei dati), Vol. 3 2.5.10 (Incantesimo ingannatore +1; nota di Incantesimo consacrato senza il testo del talento seguente) |

@@ -271,7 +271,12 @@ const Motore = (function () {
   const cdOggetto = (L, ritrovato) => 10 + L + Math.floor(L / 2) + (ritrovato ? 1 : 0);
   const cdUcmPergamena = li => 20 + li;
   const CD_UCM_BACCHETTA = 20;
-  const curaConCariche = nome => /^Cura ferite (leggere|moderate|gravi|critiche)( contingente)?$/i.test(nome || '');
+  // Vol. 3, Numero di cariche: 1 carica al giorno, rinnovata all'alba (nell'app: Riposo);
+  // le bacchette di tipo «Cura» (fra lo 0 e il 4°) fino a 3 cariche, scelte quando si aggiunge la bacchetta
+  const curaConCariche = nome => /^Cura ferite (minori contingente|(leggere|moderate|gravi|critiche)( contingente)?)$/i.test(nome || '');
+  // Vol. 3, Sovraccaricare una bacchetta: prova di incantatore (1d20 + LI) con CD 7 + livello dell'incantesimo + LI dell'utilizzatore
+  const cdSovraccarico = (L, li) => 7 + L + li;
+  const caricheMax = (nome, scelta) => curaConCariche(nome) ? Math.min(3, Math.max(1, Math.floor(+scelta) || 3)) : 1;
 
   // ---------------------------------------------------------------- dadi
   function tira(espr, rnd) {
@@ -287,6 +292,6 @@ const Motore = (function () {
     livelliMagia, maxLivello, requisito, siApplica, somma, LI, CD, RI, concentrazione, cdConcentrazione, servePerCD,
     raggio, gradino, GRADINI, RAGGI_STD, durata, durataRound: duratamRound, concentrazioneDurata, interrompibile, tempoTesto,
     formula, incrementi, compatibile, slotDaSpendere, reagente, tiroRicerca, liMinimo, cdOggetto, cdUcmPergamena,
-    CD_UCM_BACCHETTA, curaConCariche, tira };
+    CD_UCM_BACCHETTA, curaConCariche, caricheMax, cdSovraccarico, tira };
 })();
 if (typeof module !== 'undefined') module.exports = Motore;
