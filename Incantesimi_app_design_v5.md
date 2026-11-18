@@ -1,6 +1,6 @@
-# Libro degli incantesimi — design dell'app v4
+# Libro degli incantesimi — design dell'app v5
 
-STATO LAVORO: design confermato da Massy a blocchi il 16/11/2026 (blocchi 1–5); v2: bonus di livello 0 anche per Magus, Necrarca e Sigillatore; app v1.0.1 rilasciata il 16/11. **v3 (17/11/2026)**: bacchette con 1 carica al giorno come nel Vol. 3 (H2), dati riallineati a Vol. 2 2.5.20, Vol. 3 2.5.10 e Vol. 4 2.4.2 (§14), confermati da Massy. **v4 (17/11)**: sovraccarico delle bacchette (H3), tema scuro di base (§0), più conosciuti scelti alla volta (B1). Prossimo passo: prova della pagina da parte di Massy, poi push (APK e Windows).
+STATO LAVORO: design confermato da Massy a blocchi il 16/11/2026 (blocchi 1–5); v2: bonus di livello 0 anche per Magus, Necrarca e Sigillatore; app v1.0.1 rilasciata il 16/11. **v3 (17/11/2026)**: bacchette con 1 carica al giorno come nel Vol. 3 (H2), dati riallineati a Vol. 2 2.5.20, Vol. 3 2.5.10 e Vol. 4 2.4.2 (§14), confermati da Massy. **v4 (17/11)**: sovraccarico delle bacchette (H3), tema scuro di base (§0), più conosciuti scelti alla volta (B1); app v1.0.2. **v5 (18-19/11/2026, confermata da Massy)**: R cumulative (B1), colpi multipli, bonus e misure che crescono col livello, altezze e danni da caduta (D5), tiro dei dadi visibile nella scheda (F8), rimandi del Cap. 3 tolti dalle schede (§1), Vol. 4 2.4.4 (§14). Prossimo passo: Venti della magia (`Venti_della_magia_design_v3.md` §5).
 
 ## 0. Identità
 
@@ -20,7 +20,7 @@ STATO LAVORO: design confermato da Massy a blocchi il 16/11/2026 (blocchi 1–5)
 
 | Dato | Fonte | File dei dati |
 |---|---|---|
-| 1.708 schede (1.650 delle liste + 58 concesse dai privilegi) | Vol. 4 2.4.2 (docx), Cap. 3 | `schede.json` |
+| 1.708 schede (1.650 delle liste + 58 concesse dai privilegi) | Vol. 4 2.4.4 (docx), Cap. 3; i 355 rimandi «Nome → N° livello (qui per …)» non sono testo delle schede e il parser li salta | `schede.json` |
 | 15 liste con la numerazione per livello (servono le R) | Vol. 4 2.4.2, Cap. 2 | `liste.json` |
 | Conosciuti e lanciabili per gruppo (9°, 6°, 4°), con le «R» | Vol. 4 2.4.2, Cap. 1 | `tabelle.json` |
 | Modificatori di caratteristica e incantesimi bonus (1–45) | Vol. 4 2.4.2, Cap. 1 | `tabelle.json` |
@@ -65,7 +65,7 @@ La caratteristica resta modificabile a mano (archetipi come il vessatore). Ogni 
 
 ## 4. Incantesimi conosciuti (blocco 5)
 
-- **B1** Contatore per livello di magia, ad esempio «6/8 (1 R)», dalle tabelle per gruppo. Si aggiungono dalla lista della classe, con la numerazione del Cap. 2, **più alla volta** (Massy, 17/11): una casella per incantesimo, al massimo i posti liberi del livello (le altre caselle si spengono), poi «Aggiungi N»; vale anche per le R a mano. Il tocco sul nome apre la scheda.
+- **B1** Contatore per livello di magia, ad esempio «6/12 (2/5 R)», dalle tabelle per gruppo. **Le R si sommano** (Massy, 18/11): ogni «R» nella colonna di quel livello di magia, dal 1° livello di classe a quello attuale, è un conosciuto di ricerca (Stregone 10°: 12 conosciuti di 1° livello, 5 R). Si aggiungono dalla lista della classe, con la numerazione del Cap. 2, **più alla volta** (Massy, 17/11): una casella per incantesimo, al massimo i posti liberi del livello (le altre caselle si spengono), poi «Aggiungi N»; vale anche per le R a mano. Il tocco sul nome apre la scheda.
 - **B2** **Tiro delle R**: il pulsante si attiva quando i conosciuti normali di quel livello sono completi (le R si determinano DOPO quelli normali). Tira sulla numerazione della lista di quel livello e ritira se esce un incantesimo già conosciuto. Le R restano segnate e non si sostituiscono.
 - **B3** **R inserite a mano** (Massy, 16/11): per i personaggi già creati che hanno già tirato le R, ogni casella R si può riempire scegliendo l'incantesimo dalla lista, senza tiro e senza la regola dell'ordine. Resta segnato come R a tutti gli effetti.
 - **B4** **Extra a mano**: ricerca su tutte le 1.708 schede, con l'etichetta «extra» e una nota sulla fonte (talento, dote, privilegio…). Non contano nel contatore. Livello: quello della lista della propria classe se c'è, altrimenti si sceglie fra i livelli indicati nella scheda.
@@ -111,7 +111,10 @@ La caratteristica resta modificabile a mano (archetipi come il vessatore). Ogni 
 - **D2** Livello di incantatore (LI) = livello nella classe + bonus di LI che si applicano.
 - **D3** Raggio: vicino 7,5 m + 1,5 m ogni 2 livelli; medio 30 m + 3 m per livello; lungo 120 m + 12 m per livello; i raggi in metri senza etichetta sono fissi (Vol. 4, Cap. 1).
 - **D4** Durata: le durate «per livello» calcolate e scritte nell'unità più comoda (round, minuti, ore); (I) e Concentrazione segnalati.
-- **D5** Danni: il valore calcolato si evidenzia dentro il testo, ad esempio «1d6 per livello (massimo 10d6) → **7d6**», più i bonus di danno.
+- **D5** Danni: il valore calcolato si evidenzia dentro il testo, ad esempio «1d6 per livello (massimo 10d6) → **7d6**», più i bonus di danno. Formule a mano (`CORREZIONI` del parser, Massy 18/11):
+  - **Colpi multipli**: numero di colpi e danni di ogni colpo, ad esempio Dardo incantato al 9° «5 dardi» e «5 × 1d4+1». Dardo incantato, Dardo di energia, Raggio di fuoco, Saetta, Raggio accecante, Fiamma contagiosa, Dardi di tenebra, Shuriken ardente, Fulmine globulare, Catene uncinate (Colpo di rimbalzo: solo il numero). Scuotiossa: 3d6 + 1d6 ogni 2 livelli.
+  - **Bonus e misure**: Scudo della fede, Antiproiettile, Pelle coriacea, Acume tattico, Arma infallibile, Bande protettive, Passapareti.
+  - **Altezze e cadute** (1d6 ogni 3 m): Geyser d'aria «10,5 m · caduta 3d6» al 7°, Geyser, Corrente ascensionale, Creare fossa, Fossa acida, Fossa con spuntoni, Fossa affamata; Cometa «8d6 (13,5 m)» al 9°.
 - **D6** Superare la RI = 1d20 + LI + bonus, mostrato come «+X».
 - **D7** Concentrazione = 1d20 + LI + bonus della caratteristica + bonus di Concentrazione. Calcolatore con le 12 righe della tabella (Lanciare sulla difensiva 15 + 2 × livello; Ferimento 10 + danni + livello, con Punti Fatica e Punti Ferita insieme; Danni continuati 10 + ½ danni + livello; Distratto da un incantesimo; In Lotta o Immobilizzato 10 + BMC + livello; Movimento vigoroso, violento, estremamente violento; Vento; Disturbato da un incantesimo; Intralciato 15 + livello); risultato in forma «serve d20 ≥ N». Se la scheda ha una CD propria, vale quella.
 
@@ -153,7 +156,7 @@ La caratteristica resta modificabile a mano (archetipi come il vessatore). Ogni 
 - **F5** Slot superiore e metamagia insieme: ammessi. Lo slot deve essere almeno il livello più gli incrementi; se è più alto si consuma un uso dello slot superiore e la CD resta quella del livello originale.
 - **F6** **Reagenti** (componenti M con un costo): fino a 250 mo 2 al giorno; 251–500 mo 1 al giorno; 501–999 mo 1 alla settimana; da 1.000 mo il prezzo è da pagare a ogni lancio (mostrato in rosso).
 - **F7** **Incantesimi attivi**: ogni lancio con durata entra in elenco con il tempo rimasto. Pulsanti: «Round successivo», «+1 minuto», «+10 minuti», «+1 ora». Quelli a Concentrazione hanno l'etichetta «azione standard ogni round»; quelli (I) e a Concentrazione hanno «Termina». Allo scadere l'incantesimo sparisce con un avviso.
-- **F8** Pulsante «Tira» opzionale su danni, Concentrazione e RI, con il risultato in un riquadro.
+- **F8** Tiro opzionale su danni, Concentrazione e RI: si toccano i valori evidenziati e i dadi fissi del testo (sottolineati); il risultato resta in un riquadro in fondo alla scheda (prima finiva sotto il dialogo e non si vedeva). Con più colpi si tira ogni colpo e si mostrano i totali; Potenziati (+50%) e Potenziati + Massimizzati sono calcolati.
 - **F9** **Riposo**: azzera slot, usi dello slot superiore, cariche, blocchi e sovraccarichi falliti delle bacchette e reagenti giornalieri, poi apre la scelta dei preparati. **Nuova settimana** (menu) azzera i reagenti settimanali.
 
 ## 9. Libro
@@ -202,4 +205,5 @@ Riserve di classe (Scorta arcana, Riserva arcana e simili: Tracker di classe, ri
 | App | Data | Cosa |
 |---|---|---|
 | v1.0.1 / win-1.0.1 | 16/11/2026 | prima versione (design v2): Vol. 4 2.4.1, Vol. 2 2.5.19, Vol. 3 2.5.9 |
-| prossima | 17/11/2026 | design v4: sovraccarico (H3), tema scuro di base, più conosciuti alla volta; design v3: bacchette con 1 carica al giorno (H2); Vol. 4 2.4.2 (raggi di Bolle di sapone, Brontolare, Evoca Amarok, Muro di tenebre), Vol. 2 2.5.20 (nessuna differenza nei dati), Vol. 3 2.5.10 (Incantesimo ingannatore +1; nota di Incantesimo consacrato senza il testo del talento seguente) |
+| v1.0.2 / win-1.0.2 | 17/11/2026 | design v4: sovraccarico (H3), tema scuro di base, più conosciuti alla volta; design v3: bacchette con 1 carica al giorno (H2); Vol. 4 2.4.2 (raggi di Bolle di sapone, Brontolare, Evoca Amarok, Muro di tenebre), Vol. 2 2.5.20 (nessuna differenza nei dati), Vol. 3 2.5.10 (Incantesimo ingannatore +1; nota di Incantesimo consacrato senza il testo del talento seguente) |
+| prossima | 19/11/2026 | design v5: R cumulative, colpi multipli, bonus e misure col livello, altezze e cadute, tiro visibile nella scheda, rimandi tolti; Vol. 4 2.4.4 (dati delle schede, liste e tabelle identici alla 2.4.2) |

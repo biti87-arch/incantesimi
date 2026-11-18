@@ -1,6 +1,6 @@
 # Libro degli incantesimi
 
-Incantesimi dei personaggi della Collana (Vol. 4 Libro degli incantesimi 2.4.2, Vol. 2 Classi 2.5.20, Vol. 3 Miscellanea 2.5.10): più personaggi, conosciuti con le R, preparati e slot del giorno, CD, livello di incantatore, raggi, durate e danni calcolati, bonus permanenti, metamagia, Concentrazione, pergamene e bacchette. Pensata per il telefono, con tema chiaro e scuro.
+Incantesimi dei personaggi della Collana (Vol. 4 Libro degli incantesimi 2.4.4, Vol. 2 Classi 2.5.20, Vol. 3 Miscellanea 2.5.10): più personaggi, conosciuti con le R, preparati e slot del giorno, CD, livello di incantatore, raggi, durate e danni calcolati, bonus permanenti, metamagia, Concentrazione, pergamene e bacchette. Pensata per il telefono, con tema chiaro e scuro.
 
 ## Scaricare l'app
 Nella pagina **Releases** del repository:
@@ -19,7 +19,7 @@ Le app si ricompilano da sole a ogni aggiornamento del ramo `main`.
 Le icone si rigenerano con `python3 sorgenti/icone.py`.
 
 ## Decisioni di design
-Vedi `Incantesimi_app_design_v4.md`.
+Vedi `Incantesimi_app_design_v5.md`.
 
 ## Struttura
 - `sorgenti/parse_incantesimi.py`: schede, liste numerate, tabelle del Cap. 1, controllo delle tabelle del Vol. 2, metamagia; in fondo `CORREZIONI` per le formule di danno che i modelli non riconoscono.

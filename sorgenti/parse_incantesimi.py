@@ -7,7 +7,7 @@ Fonti (in sorgenti/docx/, nomi nelle costanti qui sotto):
 Stampa solo conteggi e segnalazioni (anomalie del manuale: vanno lette)."""
 import json, os, re, sys
 R = os.path.dirname(os.path.abspath(__file__))
-VOL4 = 'Vol. 4 - Libro degli incantesimi 2.4.2'
+VOL4 = 'Vol. 4 - Libro degli incantesimi 2.4.4'
 VOL2 = 'Vol. 2 - Classi 2.5.20'
 VOL3 = 'Vol. 3 - Miscellanea 2.5.10'
 GOLARION = os.path.join(R, 'metamagia_golarion.json')
@@ -162,6 +162,8 @@ CAMPI = {'Scuola': 's', 'Livello': 'l', 'Tempo di lancio': 'tl', 'Componenti': '
          'Resistenza agli incantesimi': 'ri', 'Concesso da': 'cd'}
 schede = []
 sezione = None
+RE_RIMANDO = re.compile(r'^.+ → (?:\d+° livello|livello 0) \(qui per [^)]*\)$')
+n_rimandi = 0
 sezioni = [(i, P[i]['t']) for i in range(i0, i1) if P[i]['o'] and not P[i]['c']]
 for n, i in enumerate(inizi):
     fine = inizi[n + 1] if n + 1 < len(inizi) else i1
@@ -184,6 +186,9 @@ for n, i in enumerate(inizi):
         if p['o'] and not p['c']:
             break
         t = p['t']
+        # rimandi del Cap. 3 («Giavellotto sacro → 2° livello (qui per Oracolo, Sacerdote)»): non sono testo della scheda
+        if RE_RIMANDO.match(t.strip()):
+            n_rimandi += 1; j += 1; continue
         if t.startswith('Descrizione: '): t = t[13:]
         if t.strip():
             d = {'t': t}
@@ -214,7 +219,7 @@ for n, i in enumerate(inizi):
         if k not in s: segnala(f'{nome}: manca il campo {k}')
     schede.append(s)
 
-print('schede', len(schede), 'concesse', sum(s['concesso'] for s in schede))
+print('schede', len(schede), 'concesse', sum(s['concesso'] for s in schede), '· rimandi tolti dalle descrizioni', n_rimandi)
 indice, varianti = {}, {}
 for n, s in enumerate(schede):
     if s['k'] in indice: segnala('scheda doppia:', s['n'])
@@ -302,14 +307,80 @@ def formule(t):
         out.append(f)
     return sorted(out, key=lambda o: o['i'])
 
-# Correzioni a mano: formule che i modelli non riconoscono (nome scheda → [paragrafo, testo da cercare, formula])
+# Correzioni a mano: formule che i modelli non riconoscono (nome scheda → [(testo da cercare, formula)]).
+# Il testo si cerca in tutti i paragrafi; la formula sostituisce quelle automatiche che si sovrappongono.
+# Tipi: 'd' dadi per livello (base = dadi fissi in più), 'p' dadi + bonus piatto,
+#   'c' conteggio o bonus: a + p·⌊(LI − da)/k⌋ (massimo max), u = unità, pre = '+' per i bonus, colpi = numero di colpi,
+#   'k' danni di un colpo (dadi fissi), moltiplicati per il numero di colpi; pc = 1 su 'd' e 'p' fa lo stesso,
+#   'm' misura in metri (stessa formula di 'c'), con cad = danni da caduta {n, f, ogni (m), max} e fmt 'altezza' o 'danni'.
+CADUTA = {'n': 1, 'f': 6, 'ogni': 3}                       # 1d6 ogni 3 m (Vol. 4, modifica di sistema di Geyser d'aria)
+RAGGI_4 = {'t': 'c', 'a': 1, 'k': 4, 'da': 3, 'max': 3, 'u': 'raggi', 'colpi': 1}
 CORREZIONI = {
-    'trama ipnotica': [(0, 'Tirare 2d4 e aggiungere il proprio livello dell’incantatore (massimo +10)',
+    'trama ipnotica': [('Tirare 2d4 e aggiungere il proprio livello dell’incantatore (massimo +10)',
                         {'t': 'p', 'dadi': '2d4', 'p': 1, 'k': 1, 'max': 10})],
-    'nova incorporea': [(0, '1d4 Dadi Vita di creature gassose, fumose, semicorporee e incorporee per livello di incantatore (massimo 20d4)',
+    'nova incorporea': [('1d4 Dadi Vita di creature gassose, fumose, semicorporee e incorporee per livello di incantatore (massimo 20d4)',
                          {'t': 'd', 'n': 1, 'f': 4, 'k': 1, 'max': 20})],
-    'dardo incantato': [(2, '2 al 3° livello, 3 al 5°, 4 al 7° fino a un massimo di 5 al 9° livello e oltre',
-                         {'t': 'c', 'a': 1, 'k': 2, 'da': 1, 'max': 5, 'u': 'dardi'})],
+    # più colpi col livello (Massy, 18/11)
+    'dardo incantato': [('2 al 3° livello, 3 al 5°, 4 al 7° fino a un massimo di 5 al 9° livello e oltre',
+                         {'t': 'c', 'a': 1, 'k': 2, 'da': 1, 'max': 5, 'u': 'dardi', 'colpi': 1}),
+                        ('1d4+1 danni da forza', {'t': 'k', 'dadi': '1d4+1'})],
+    'dardo di energia': [('Per ogni due livelli di incantatore oltre il 1°, si scaglia un dardo aggiuntivo del medesimo tipo di energia (massimo 5)',
+                          {'t': 'c', 'a': 1, 'k': 2, 'da': 1, 'max': 5, 'u': 'dardi', 'colpi': 1}),
+                         ('1d6+1 danni del tipo di energia scelto', {'t': 'k', 'dadi': '1d6+1'})],
+    'raggio di fuoco': [('Si può scagliare un raggio, più un raggio addizionale ogni 4 livelli oltre il 3° (massimo 3)', RAGGI_4),
+                        ('3d6 danni da fuoco', {'t': 'k', 'dadi': '3d6'})],
+    'saetta': [('Si può scagliare un raggio, più un raggio addizionale ogni 4 livelli oltre il 3° (massimo 3)', RAGGI_4),
+               ('3d6 danni da elettricità', {'t': 'k', 'dadi': '3d6'})],
+    'raggio accecante': [('Si può lanciare un raggio, più un raggio aggiuntivo ogni 4 livelli oltre al 3° (fino ad un massimo di tre raggi all’11° livello)', RAGGI_4),
+                         ('1d4 danni ogni due livelli dell’incantatore (massimo 5d4)', {'t': 'd', 'n': 1, 'f': 4, 'k': 2, 'max': 5, 'pc': 1})],
+    'fiamma contagiosa': [('Si possono scagliare tre raggi, più un raggio aggiuntivo ogni 4 livelli oltre l’11° (fino ad un massimo di 5 raggi al 19° livello)',
+                           {'t': 'c', 'a': 3, 'k': 4, 'da': 11, 'max': 5, 'u': 'raggi', 'colpi': 1}),
+                          ('4d6 danni da fuoco', {'t': 'k', 'dadi': '4d6'})],
+    'dardi di tenebra': [('È possibile lanciare un dardo, più un dardo aggiuntivo ogni quattro livelli oltre il 5° (fino a un massimo di tre dardi al 13° livello)',
+                          {'t': 'c', 'a': 1, 'k': 4, 'da': 5, 'max': 3, 'u': 'dardi', 'colpi': 1}),
+                         ('4d6 danni a una creatura vivente', {'t': 'k', 'dadi': '4d6'})],
+    'shuriken ardente': [('più un altro proiettile ogni due livelli dell’incantatore oltre il 3° (fino a un massimo di 8 shuriken al 15° livello)',
+                          {'t': 'c', 'a': 2, 'k': 2, 'da': 3, 'max': 8, 'u': 'shuriken', 'colpi': 1}),
+                         ('1d8 danni da fuoco', {'t': 'k', 'dadi': '1d8'})],
+    'fulmine globulare': [('Per ogni 4 livelli dell’incantatore oltre il 7°, si crea un ulteriore globo di fulmini (3 globi all’11°, 4 globi al 15°, fino al massimo di 5 globi al 19°)',
+                           {'t': 'c', 'a': 2, 'k': 4, 'da': 7, 'max': 5, 'u': 'globi', 'colpi': 1}),
+                          ('3d6 danni da elettricità', {'t': 'k', 'dadi': '3d6'})],
+    'catene uncinate': [('Si evoca una catena aggiuntiva ogni 3 livelli dopo il 1°, per un totale di due catene al 4° livello, tre al 7° fino a un massimo di quattro al 10°',
+                         {'t': 'c', 'a': 1, 'k': 3, 'da': 1, 'max': 4, 'u': 'catene', 'colpi': 1}),
+                        ('1d6 danni taglienti', {'t': 'k', 'dadi': '1d6'})],
+    'colpo di rimbalzo': [('un proiettile ogni tre livelli dell’incantatore posseduti, fino a un massimo di sei al 18° livello dell’incantatore',
+                           {'t': 'c', 'a': 0, 'k': 3, 'da': 0, 'max': 6, 'u': 'rimbalzi'})],
+    'scuotiossa': [('3d6 danni più 1d6 danni aggiuntivi per ogni 2 livelli dell’incantatore',
+                    {'t': 'd', 'n': 1, 'f': 6, 'k': 2, 'max': None, 'base': 3})],
+    # bonus che crescono col livello
+    'acume tattico': [('Questo bonus aumenta di +1 per ogni cinque livelli dell’incantatore oltre il 5° (massimo +4)',
+                       {'t': 'c', 'a': 1, 'k': 5, 'da': 5, 'max': 4, 'u': '', 'pre': '+'})],
+    'arma infallibile': [('più 1 punto bonus addizionale ogni quattro livelli dell’incantatore (bonus massimo totale +7)',
+                          {'t': 'c', 'a': 2, 'k': 4, 'da': 0, 'max': 7, 'u': '', 'pre': '+'})],
+    'scudo della fede': [('con un +1 addizionale ogni 6 livelli dell’incantatore (Bonus di Deviazione massimo +5 al 18° livello)',
+                          {'t': 'c', 'a': 2, 'k': 6, 'da': 0, 'max': 5, 'u': '', 'pre': '+'})],
+    'antiproiettile': [('con un ulteriore +1 al bonus ogni cinque livelli dell’incantatore posseduti (fino a un massimo di +8 al 20° livello)',
+                        {'t': 'c', 'a': 4, 'k': 5, 'da': 0, 'max': 8, 'u': '', 'pre': '+'})],
+    'pelle coriacea': [('Tale bonus aumenta di +1 ogni 3 livelli dell’incantatore oltre il 3°, fino a un massimo di +5 al 12° livello dell’incantatore',
+                        {'t': 'c', 'a': 2, 'k': 3, 'da': 3, 'max': 5, 'u': '', 'pre': '+'})],
+    'bande protettive': [('12 danni per livello dell’incantatore (fino ad un massimo di 120 danni al 10° livello)',
+                          {'t': 'c', 'a': 0, 'p': 12, 'k': 1, 'da': 0, 'max': 120, 'u': 'danni'})],
+    'passapareti': [('profondo 3 metri più altri 1,5 metri ogni 3 livelli dell’incantatore oltre il 9° (4,5 metri al 12°, 6 metri al 15° e un massimo di 7,5 metri al 18° livello)',
+                     {'t': 'm', 'a': 3, 'p': 1.5, 'k': 3, 'da': 9, 'max': 7.5})],
+    # altezze e cadute (Massy, 18/11)
+    'geyser d\'aria': [('per un numero di metri pari a 1,5 x il livello dell’incantatore',
+                        {'t': 'm', 'a': 0, 'p': 1.5, 'k': 1, 'da': 0, 'cad': CADUTA})],
+    'geyser': [('in base all’altezza del Geyser', {'t': 'm', 'a': 0, 'p': 3, 'k': 2, 'da': 0, 'cad': CADUTA})],
+    'corrente ascensionale': [('di 1,5 m per livello di incantatore (massimo 15 m)',
+                               {'t': 'm', 'a': 0, 'p': 1.5, 'k': 1, 'da': 0, 'max': 15, 'cad': CADUTA})],
+    'creare fossa': [('con una profondità di 3 metri ogni 2 livelli dell’incantatore (massimo 9 metri)',
+                      {'t': 'm', 'a': 0, 'p': 3, 'k': 2, 'da': 0, 'max': 9, 'cad': CADUTA})],
+    'fossa acida': [('con una profondità di 3 metri ogni 2 livelli dell’incantatore (massimo 30 metri)',
+                     {'t': 'm', 'a': 0, 'p': 3, 'k': 2, 'da': 0, 'max': 30, 'cad': CADUTA})],
+    'fossa con spuntoni': [('con una profondità di 9 metri', {'t': 'm', 'a': 9, 'p': 0, 'k': 1, 'da': 0, 'cad': CADUTA})],
+    'fossa affamata': [('con una profondità fissa di 9 metri', {'t': 'm', 'a': 9, 'p': 0, 'k': 1, 'da': 0, 'cad': CADUTA})],
+    'cometa': [('2d6 danni contundenti ogni 3 m percorsi (massimo 20d6)',
+                {'t': 'm', 'a': 0, 'p': 1.5, 'k': 1, 'da': 0, 'cad': {'n': 2, 'f': 6, 'ogni': 3, 'max': 20}, 'fmt': 'danni'})],
 }
 
 n_form = n_dadi_liv = 0
@@ -322,12 +393,13 @@ for s in schede:
         f = formule(d['t'])
         if f:
             d['f'] = f; n_form += 1
-    for (ip, testo, form) in CORREZIONI.get(s['k'], []):
-        d = s['desc'][ip]
-        i = d['t'].find(testo)
-        if i < 0:
+    for (testo, form) in CORREZIONI.get(s['k'], []):
+        d = next((d for d in s['desc'] if testo in d['t']), None)
+        if d is None:
             segnala(f'CORREZIONI: «{testo[:40]}» non trovato in {s["n"]}'); continue
-        d.setdefault('f', []).append(dict(form, i=i, j=i + len(testo)))
+        i = d['t'].find(testo); j = i + len(testo)
+        d['f'] = [f for f in d.get('f', []) if f['j'] <= i or f['i'] >= j] + [dict(form, i=i, j=j)]
+        d['f'].sort(key=lambda o: o['i'])
     tutto = ' '.join(d['t'] for d in s['desc'])
     if re.search(r'\d+d\d+[^.;]{0,80}livell', tutto) and not any('f' in d for d in s['desc']):
         n_dadi_liv += 1

@@ -22,6 +22,10 @@ eq('requisito', M.slot('Arcanista', 4, 11)[2], 0);
 // Paladino 4°: tabella 0 al 1° → bonus solo dove c'è un numero (anche 0)
 eq('slot Paladino 4 Car 14', M.slot('Paladino', 4, 14), { 1: 1, 2: null, 3: null, 4: null });
 eq('conosciuti Arcanista 1', M.conosciuti('Arcanista', 1), { 0: { n: 4, r: 0 }, 1: { n: 4, r: 1 } });
+// R cumulative (Massy, 18/11): Stregone 10° → 12 di 1° con 5 R (righe 1, 2, 3, 5, 7)
+eq('R Stregone 10', [0, 1, 2, 3, 4, 5].map(L => M.conosciuti('Stregone', 10)[L]), [{ n: 7, r: 0 }, { n: 12, r: 5 }, { n: 12, r: 5 }, { n: 10, r: 4 }, { n: 8, r: 3 }, { n: 4, r: 1 }]);
+eq('R Bardo 20 liv 6', M.conosciuti('Bardo', 20)[6], { n: 6, r: 3 });
+eq('R Ranger 15 liv 1', M.conosciuti('Ranger', 15)[1], { n: 8, r: 3 });
 eq('preparabili 7', M.preparabili(1, 7), 4); eq('preparabili liv 0', M.preparabili(0, 7), 7);
 eq('slot superiore Int 18', M.usiSlotSuperiore(18), 2); eq('slot superiore Int 12', M.usiSlotSuperiore(12), 1);
 eq('sostituzioni 9°', [3, 4, 5, 6].map(l => M.livelloSostituzione('Stregone', l)), [false, true, false, true]);
@@ -65,11 +69,38 @@ eq('Palla di fuoco intensa LI 14', formule('Palla di fuoco', 14, { intensi: true
 eq('Palla di fuoco massimizzata 7', formule('Palla di fuoco', 7, { massimizzati: true }), ['42']);
 eq('Palla di fuoco potenziata 7', formule('Palla di fuoco', 7, { potenziati: true }), ['7d6 (+50%)']);
 eq('Palla di fuoco pot+max', formule('Palla di fuoco', 7, { potenziati: true, massimizzati: true }), ['42 + metà di 7d6']);
-eq('Dardo incantato LI 7', formule('Dardo incantato', 7), ['4 dardi']);
-eq('Dardo incantato LI 1', formule('Dardo incantato', 1), ['1 dardi']);
+eq('Dardo incantato LI 7', formule('Dardo incantato', 7), ['1d4+1', '4 dardi']);
+eq('Dardo incantato LI 1', formule('Dardo incantato', 1), ['1d4+1', '1 dardo']);
 eq('Cura ferite leggere LI 3', formule('Cura ferite leggere', 3)[0], '1d8+3');
 eq('Cura ferite leggere LI 9', formule('Cura ferite leggere', 9)[0], '1d8+5');
 eq('Lama infuocata LI 9', formule('Lama infuocata', 9)[0], '1d8+4');
+
+// più colpi, bonus e altezze (Massy, 18/11)
+const conColpi = (n, li, meta) => formule(n, li, Object.assign({ colpi: M.colpi(S(n), li) }, meta || {}));
+eq('Dardo incantato LI 9', conColpi('Dardo incantato', 9), ['5 × 1d4+1', '5 dardi']);
+eq('Dardo incantato LI 2', conColpi('Dardo incantato', 2), ['1d4+1', '1 dardo']);
+eq('Raggio di fuoco LI 6/7/11/20', [6, 7, 11, 20].map(li => conColpi('Raggio di fuoco', li)), [['1 raggio', '3d6'], ['2 raggi', '2 × 3d6'], ['3 raggi', '3 × 3d6'], ['3 raggi', '3 × 3d6']]);
+eq('Saetta LI 11 massimizzata', conColpi('Saetta', 11, { massimizzati: true }), ['3 raggi', '3 × 18']);
+eq('Raggio accecante LI 7', conColpi('Raggio accecante', 7), ['2 raggi', '2 × 3d4']);
+eq('Shuriken ardente LI 15', conColpi('Shuriken ardente', 15), ['8 shuriken', '8 × 1d8']);
+eq('Fulmine globulare LI 15', conColpi('Fulmine globulare', 15), ['4 globi', '4 × 3d6']);
+eq('Scuotiossa LI 7', formule('Scuotiossa', 7), ['6d6']);
+eq('Scudo della fede LI 6/18', [6, 18, 20].map(li => formule('Scudo della fede', li)[0]), ['+3', '+5', '+5']);
+eq('Pelle coriacea LI 3/6/12', [3, 6, 12].map(li => formule('Pelle coriacea', li)[0]), ['+2', '+3', '+5']);
+eq('Passapareti LI 9/12/20', [9, 12, 20].map(li => formule('Passapareti', li)[0]), ['3 m', '4,5 m', '7,5 m']);
+eq('Geyser d\'aria LI 7', formule('Geyser d’aria', 7), ['10,5 m · caduta 3d6']);
+eq('Geyser LI 10', formule('Geyser', 10), ['15 m · caduta 5d6']);
+eq('Corrente ascensionale LI 12', formule('Corrente ascensionale', 12), ['15 m · caduta 5d6']);
+eq('Cometa LI 9', formule('Cometa', 9), ['8d6 (13,5 m)']);
+eq('Fossa con spuntoni', formule('Fossa con spuntoni', 5), ['9 m · caduta 3d6']);
+// tiri
+const sempre = (v => () => v);
+eq('tira 3 × 1d4+1', M.tiraValore('3 × 1d4+1', sempre(0.99)), { tot: 15, colpi: [5, 5, 5], tiri: [4, 4, 4] });
+eq('tira potenziato', M.tiraValore('2d6 (+50%)', sempre(0)).tot, 3);
+eq('tira pot+max', M.tiraValore('12 + metà di 2d6', sempre(0.99)).tot, 18);
+eq('tira caduta', M.tiraValore('9 m · caduta 3d6', sempre(0)).tot, 3);
+eq('tira 3 × 18', M.tiraValore('3 × 18').tot, 54);
+eq('tirabile', ['7d6', '3 × 18', '42', '+3', '4 dardi'].map(M.tirabile), [true, true, false, false, false]);
 
 // metamagia
 const T = n => D.metamagia.find(t => t.n === n);
@@ -94,7 +125,7 @@ eq('cariche al giorno', [M.caricheMax('Dardo incantato'), M.caricheMax('Dardo in
 // copertura dei dati
 const conFormula = D.schede.filter(s => s.desc.some(p => p.f)).length;
 let rotte = 0;
-for (const s of D.schede) for (const p of s.desc) for (const f of p.f || []) { const r = M.formula(f, 10); if (!r || /NaN|undefined/.test(r)) rotte++; }
+for (const s of D.schede) for (const p of s.desc) for (const f of p.f || []) { const r = M.formula(f, 10, { colpi: M.colpi(s, 10) }); if (!r || /NaN|undefined/.test(r)) rotte++; }
 eq('formule rotte', rotte, 0);
 let rg = 0; for (const s of D.schede) if (/^(vicino|medio|lungo)/.test(s.r || '') && !M.raggio(s.r, 5)) rg++;
 eq('raggi non calcolati', rg, 0);

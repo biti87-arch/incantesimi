@@ -67,6 +67,8 @@ ul.inc li .n:hover{text-decoration:underline}
 .tag.no{background:var(--nobg);color:var(--cond)}
 .avviso{background:var(--mark);border:1px solid var(--gold2);border-radius:8px;padding:8px 10px;font-size:.88rem}
 .cond{color:var(--cond);font-weight:600}
+.tirabile{cursor:pointer}.dado{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.tiro{position:sticky;bottom:0;display:flex;gap:8px;align-items:center;justify-content:space-between;background:var(--ink);color:var(--bg);padding:10px 12px;border-radius:8px;box-shadow:0 -2px 10px rgba(0,0,0,.3)}.tiro .muted{color:inherit;opacity:.75}
 .calc{background:var(--gold);color:var(--on-gold);border-radius:4px;padding:0 5px;margin-left:4px;font-weight:600;white-space:nowrap}
 .fx{background:var(--mark);border-radius:3px}
 dialog{border:0;padding:0;width:min(760px,100vw);max-width:100vw;max-height:100dvh;border-radius:12px;background:var(--surface);color:var(--ink)}
@@ -169,10 +171,25 @@ function numeroLista(classe, L, s, v) {
 
 // ---------------------------------------------------------------- interfaccia generale
 function toast(t, ms) {
-  const d = document.createElement('div'); d.className = 'toast'; d.innerHTML = t; document.body.appendChild(d);
+  const d = document.createElement('div'); d.className = 'toast'; d.innerHTML = t; (dlg && dlg.open ? dlg : document.body).appendChild(d);
   setTimeout(() => d.remove(), ms || 2600);
 }
-const dlg = $('#dlg');
+var dlg = $('#dlg');
+// risultato di un tiro: riquadro fisso in fondo alla scheda aperta (prima finiva sotto il dialogo modale e non si vedeva)
+function mostraTiro(html) {
+  const b = $('#dlgB');
+  if (!dlg.open) return toast(html, 5000);
+  let r = b.querySelector('.tiro');
+  if (!r) { r = document.createElement('div'); r.className = 'tiro'; b.appendChild(r); }
+  r.innerHTML = `<span>${html}</span><button class="mini" aria-label="Chiudi il tiro">✕</button>`;
+  r.querySelector('button').onclick = () => r.remove();
+}
+function tiraEMostra(espr, nome) {
+  const r = M.tiraValore(espr);
+  if (!r) return;
+  const det = r.colpi.length > 1 ? 'colpi: ' + r.colpi.join(', ') : (r.tiri.length ? 'dadi: ' + r.tiri.join(', ') : '');
+  mostraTiro(`${nome ? esc(nome) + ' · ' : ''}${esc(espr)} → <b>${r.tot}</b>${det ? ` <span class="muted">(${det})</span>` : ''}`);
+}
 function apri(titolo, html, dopo) { $('#dlgT').textContent = titolo; $('#dlgB').innerHTML = html; if (!dlg.open) dlg.showModal(); $('#dlgB').scrollTop = 0; if (dopo) dopo($('#dlgB')); }
 function chiudi() { if (dlg.open) dlg.close(); }
 function chiedi(titolo, testo, si) {
@@ -219,7 +236,7 @@ function htmlTesto(t, forms, li, meta) {
   }
   return out + colora(esc(t.slice(last)));
 }
-const colora = h => h.replace(RE_COND, '<span class="cond">$1</span>');
+const colora = h => h.replace(RE_COND, '<span class="cond">$1</span>').replace(/\b(\d+d\d+(?:\+\d+)?)\b/g, '<span class="dado" data-tira="$1">$1</span>');
 function htmlDesc(s, li, meta) {
   let h = '', tab = null, riga = null;
   const chiudiTab = () => { if (tab) { h += '<table>' + tab + '</tr></table>'; tab = null; riga = null; } };
@@ -245,6 +262,7 @@ function apriScheda(o) {
     const bd = b => ctx.bonus.filter(x => x.ambito === 'danni' && (x.modo === 'dado') === b && M.siApplica(x, s, cl.classe)).reduce((a, x) => a + (+x.valore || 0), 0);
     const metaF = { potenziati: tal.some(t => t.eff === 'potenziati'), massimizzati: tal.some(t => t.eff === 'massimizzati'), intensi: tal.some(t => t.eff === 'intensi'), danni: o.oggetto ? null : { fissi: bd(false), dado: bd(true) } };
     const li = o.liOgg != null ? o.liOgg : M.LI(ctx, s);
+    metaF.colpi = M.colpi(s, li);
     const Lcd = tal.some(t => t.eff === 'intensificati') && stato.intens ? stato.intens : L;
     const cd = o.cdOgg != null ? o.cdOgg : M.CD(ctx, s, Lcd);
     const fR = tal.some(t => t.eff === 'ingranditi') ? 2 : 1, fD = tal.some(t => t.eff === 'estesi') ? 2 : 1;
@@ -273,17 +291,17 @@ function apriScheda(o) {
     if (o.lancio) h += htmlLancio(pg, cl, ctx, s, o, L, stato, tal);
     if (tal.length) h += `<div class="avviso">${tal.map(t => `<b>${esc(t.n)}</b>${t.inc != null ? ' (+' + t.inc + ')' : ''}: ${esc(t.nota || t.intro || '')}`).join('<br>')}</div>`;
     h += `<div class="desc">${htmlDesc(s, li, metaF)}</div>`;
-    h += `<div class="muted small">Tocca un valore evidenziato con i dadi per tirarlo.</div>`;
+    h += `<div class="muted small">Tocca un valore con i dadi (evidenziato o sottolineato) per tirarlo; con più colpi si tira ogni colpo.</div>`;
     apri((o.v ? o.v : s.n) + (L != null ? ` · ${L}°` : ''), h, b => {
-      b.querySelectorAll('[data-tira]').forEach(x => { if (/^\d+d\d+/.test(x.dataset.tira)) { x.style.cursor = 'pointer'; x.onclick = () => { const r = M.tira(x.dataset.tira); if (r) toast(`${esc(x.dataset.tira)}: <b>${r.tot}</b> (${r.tiri.join(', ')})`, 4000); }; } });
+      b.querySelectorAll('[data-tira]').forEach(x => { if (M.tirabile(x.dataset.tira)) { x.classList.add('tirabile'); x.onclick = () => tiraEMostra(x.dataset.tira); } });
       b.querySelectorAll('[data-meta]').forEach(x => x.onchange = () => { stato.meta[x.dataset.meta] = x.checked; stato.slotScelto = null; disegnaScheda(); });
       const ii = b.querySelector('#intens'); if (ii) ii.onchange = () => { stato.intens = +ii.value; stato.slotScelto = null; disegnaScheda(); };
       const pp = b.querySelector('#portata'); if (pp) pp.onchange = () => { stato.portata = +pp.value; disegnaScheda(); };
       const ss = b.querySelector('#slotSc'); if (ss) ss.onchange = () => { stato.slotScelto = +ss.value; disegnaScheda(); };
       const bl = b.querySelector('#bLancia'); if (bl) bl.onclick = () => lancia(pg, cl, ctx, s, o, L, stato, false);
       const bn = b.querySelector('#bNonPrep'); if (bn) bn.onclick = () => lancia(pg, cl, ctx, s, o, L, stato, true);
-      const tc = b.querySelector('#tiraConc'); if (tc) tc.onclick = () => { const r = M.tira('1d20'); toast(`Concentrazione: 1d20 (${r.tot}) + ${tc.dataset.b} = <b>${r.tot + +tc.dataset.b}</b>`, 4000); };
-      const tr = b.querySelector('#tiraRI'); if (tr) tr.onclick = () => { const r = M.tira('1d20'); toast(`Superare la RI: 1d20 (${r.tot}) + ${tr.dataset.b} = <b>${r.tot + +tr.dataset.b}</b>`, 4000); };
+      const tc = b.querySelector('#tiraConc'); if (tc) tc.onclick = () => { const r = M.tira('1d20'); mostraTiro(`Concentrazione: 1d20 (${r.tot}) + ${tc.dataset.b} = <b>${r.tot + +tc.dataset.b}</b>`); };
+      const tr = b.querySelector('#tiraRI'); if (tr) tr.onclick = () => { const r = M.tira('1d20'); mostraTiro(`Superare la RI: 1d20 (${r.tot}) + ${tr.dataset.b} = <b>${r.tot + +tr.dataset.b}</b>`); };
     });
   };
   disegnaScheda();

@@ -37,13 +37,17 @@ const Motore = (function () {
     }
     return out;
   }
-  // conosciuti dalla tabella: {L: {n, r}} (n comprende la R)
+  // conosciuti dalla tabella: {L: {n, r}} (n comprende le R). Ogni «R» della colonna, dal 1° livello di classe
+  // a quello attuale, dice che uno dei nuovi conosciuti di quel livello è di ricerca: le R si sommano
+  // (Massy, 18/11: Stregone 10° → 12 di 1° livello, 5 R)
   function conosciuti(classe, livello, extra) {
-    const out = {};
+    const out = {}, tab = D.gruppi[D.classi[classe].gruppo].conosciuti;
     for (const L of livelliMagia(classe)) {
-      const v = cella(D.gruppi[D.classi[classe].gruppo].conosciuti, livello, L);
+      const v = cella(tab, livello, L);
       if (v === null) { if (extra && extra[L]) out[L] = { n: extra[L], r: 0 }; continue; }
-      out[L] = { n: parseInt(v, 10) + ((extra && extra[L]) || 0), r: /R/.test(v) ? 1 : 0 };
+      let r = 0;
+      for (let l = 1; l <= livello; l++) if (/R/.test(cella(tab, l, L) || '')) r++;
+      out[L] = { n: parseInt(v, 10) + ((extra && extra[L]) || 0), r };
     }
     return out;
   }
@@ -173,9 +177,24 @@ const Motore = (function () {
     if (f.t === 'd') {
       let max = f.max;
       if (max != null && meta.intensi) max += Math.floor(5 * f.n / f.k);
-      let n = f.n * Math.max(passi(li, f.k), 1);
+      // base: dadi fissi in più («3d6 danni più 1d6 aggiuntivi per ogni 2 livelli»)
+      let n = f.base ? f.n * passi(li, f.k) : f.n * Math.max(passi(li, f.k), 1);
       if (max != null) n = Math.min(n, max);
-      return dadi(n, f.f, bonusDanni(meta, n), meta);
+      n += f.base || 0;
+      return perColpo(f, meta, dadi(n, f.f, bonusDanni(meta, n), meta));
+    }
+    if (f.t === 'k') {                 // danni di un colpo, moltiplicati per il numero di colpi
+      const m = f.dadi.match(/^(\d+)d(\d+)(?:\+(\d+))?$/);
+      const n = +m[1];
+      return perColpo(f, meta, dadi(n, +m[2], (+m[3] || 0) + bonusDanni(meta, n), meta));
+    }
+    if (f.t === 'm') {                 // misura in metri, con i danni da caduta
+      const v = conteggio(f, li);
+      if (!f.cad) return fmt(v) + ' m';
+      let n = f.cad.n * Math.floor(v / f.cad.ogni);
+      if (f.cad.max != null) n = Math.min(n, f.cad.max);
+      const dd = n ? (f.fmt === 'danni' ? dadi(n, f.cad.f, 0, meta) : n + 'd' + f.cad.f) : 'nessun danno';
+      return f.fmt === 'danni' ? dd + ' (' + fmt(v) + ' m)' : fmt(v) + ' m · caduta ' + dd;
     }
     if (f.t === 'p') {
       const [n, fa] = f.dadi.split('d').map(Number);
@@ -184,15 +203,27 @@ const Motore = (function () {
       let p = f.p * passi(li, f.k);
       if (max != null) p = Math.min(p, max);
       if (fa === 20) return '1d20+' + p;
-      return dadi(n, fa, p + bonusDanni(meta, n), meta);
+      return perColpo(f, meta, dadi(n, fa, p + bonusDanni(meta, n), meta));
     }
     if (f.t === 'c') {
-      let n = f.a + Math.floor(Math.max(li - f.da, 0) / f.k);
-      if (f.max != null) n = Math.min(n, f.max);
-      return n + ' ' + f.u;
+      const n = conteggio(f, li);
+      return (f.pre || '') + fmt(n) + (f.u ? ' ' + (n === 1 && SINGOLARE[f.u] || f.u) : '');
     }
     return '';
   }
+  const SINGOLARE = { dardi: 'dardo', raggi: 'raggio', globi: 'globo', catene: 'catena', rimbalzi: 'rimbalzo' };
+  // a + p·⌊(LI − da)/k⌋, al massimo max (colpi, bonus e misure che crescono col livello)
+  function conteggio(f, li) {
+    let n = f.a + (f.p == null ? 1 : f.p) * Math.floor(Math.max(li - (f.da || 0), 0) / f.k);
+    if (f.max != null) n = Math.min(n, f.max);
+    return n;
+  }
+  // numero di colpi di una scheda (Dardo incantato, Raggio di fuoco…): 1 se non ne ha
+  function colpi(s, li) {
+    for (const p of s.desc) for (const f of p.f || []) if (f.t === 'c' && f.colpi) return conteggio(f, li);
+    return 1;
+  }
+  const perColpo = (f, meta, testo) => (f.t === 'k' || f.pc) && (meta.colpi || 1) > 1 ? meta.colpi + ' × ' + testo : testo;
   // bonus di danno (ambito «danni»): fissi + per dado; meta.danni = {fissi, dado}
   const bonusDanni = (meta, n) => meta.danni ? (meta.danni.fissi || 0) + (meta.danni.dado || 0) * n : 0;
   function dadi(n, f, piu, meta) {
@@ -287,11 +318,30 @@ const Motore = (function () {
     for (let i = 0; i < +m[1]; i++) { const r = 1 + Math.floor(rnd() * +m[2]); tiri.push(r); tot += r; }
     return { tot: tot + (+m[3] || 0), tiri };
   }
+  // tiro di un valore calcolato: «3 × 1d4+1», «7d6 (+50%)», «42 + metà di 7d6», «9 m · caduta 3d6», «10d6 (15 m)»
+  // → {tot, colpi: [totale di ogni colpo], tiri: [dadi]} oppure null se non c'è niente da tirare
+  const tirabile = espr => /\d+d\d+/.test(String(espr)) || /^\d+ × \d+$/.test(String(espr));
+  function tiraValore(espr, rnd) {
+    let s = String(espr), n = 1;
+    const mc = s.match(/^(\d+) × (.+)$/);
+    if (mc) { n = +mc[1]; s = mc[2]; }
+    const uno = () => {
+      let m = s.match(/^(\d+) \+ metà di (\d+d\d+(?:\+\d+)?)/);
+      if (m) { const r = tira(m[2], rnd); return { tot: +m[1] + Math.floor(r.tot / 2), tiri: r.tiri }; }
+      m = s.match(/\d+d\d+(?:\+\d+)?/);
+      if (m) { const r = tira(m[0], rnd); return { tot: /\(\+50%\)/.test(s) ? Math.floor(r.tot * 1.5) : r.tot, tiri: r.tiri }; }
+      if (/^\d+$/.test(s)) return { tot: +s, tiri: [] };
+      return null;
+    };
+    const out = { tot: 0, colpi: [], tiri: [] };
+    for (let i = 0; i < n; i++) { const r = uno(); if (!r) return null; out.tot += r.tot; out.colpi.push(r.tot); out.tiri.push(...r.tiri); }
+    return out;
+  }
 
   return { imposta, modCar, bonusCar, slot, conosciuti, preparabili, usiSlotSuperiore, livelloSostituzione,
     livelliMagia, maxLivello, requisito, siApplica, somma, LI, CD, RI, concentrazione, cdConcentrazione, servePerCD,
     raggio, gradino, GRADINI, RAGGI_STD, durata, durataRound: duratamRound, concentrazioneDurata, interrompibile, tempoTesto,
     formula, incrementi, compatibile, slotDaSpendere, reagente, tiroRicerca, liMinimo, cdOggetto, cdUcmPergamena,
-    CD_UCM_BACCHETTA, curaConCariche, caricheMax, cdSovraccarico, tira };
+    CD_UCM_BACCHETTA, curaConCariche, caricheMax, cdSovraccarico, tira, tiraValore, tirabile, colpi, conteggio };
 })();
 if (typeof module !== 'undefined') module.exports = Motore;
