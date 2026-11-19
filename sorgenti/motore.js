@@ -285,6 +285,57 @@ const Motore = (function () {
     return { per: 'lancio', usi: 0, costo };
   }
 
+  // ---------------------------------------------------------------- Venti della magia (regola opzionale, design v6 §15)
+  // potenziamenti di Forzare i Venti: 1/2/3/4 dal 1°/6°/11°/16° livello nelle classi incantatrici (sommati)
+  const maxForzare = liv => liv >= 16 ? 4 : liv >= 11 ? 3 : liv >= 6 ? 2 : liv >= 1 ? 1 : 0;
+  const potenziamento = k => D.venti.forzare.find(f => f.k === k) || { scatta: 0, d12: 0 };
+  // il tiro dei Venti fa scattare la prova con 1..soglia (0 = mai); eff = effetti dei Venti in corso {prova12, noProva, malus}
+  function sogliaVenti(forzati, eff) {
+    if (eff && eff.noProva) return 0;
+    return (eff && eff.prova12 ? 2 : 1) + (forzati || []).reduce((a, k) => a + potenziamento(k).scatta, 0);
+  }
+  const malusVenti = (forzati, eff) => ((eff && eff.malus) || 0) + (forzati || []).reduce((a, k) => a + potenziamento(k).d12, 0);
+  // esito del d20: 'libero' (20; 19 con l'Essenza di acciaio arcano pronta), 'prova', 'normale';
+  // con le bacchette (oggetto) il 20 non ha effetto e l'Essenza non scatta (W1)
+  function esitoVenti(d20, soglia, opz) {
+    opz = opz || {};
+    if (d20 === 20 && !opz.oggetto) return { e: 'libero' };
+    if (d20 === 19 && opz.essenza && !opz.oggetto && soglia < 19) return { e: 'libero', essenza: true };
+    if (d20 <= soglia) return { e: 'prova' };
+    return { e: 'normale' };
+  }
+  // prova di incantatore: 1d20 + LI contro CD 15 + livello dell'incantesimo
+  const cdProvaVenti = L => 15 + L;
+  // un passo della manifestazione: d12 − malus; con 0 o meno si ritira 1d12 senza modificatori sulla tabella
+  // successiva ({sali}); al 9° si applica il risultato 1
+  function manifestazione(L, d12, malus) {
+    const r = d12 - (malus || 0);
+    if (r >= 1) return { L, n: Math.min(12, r) };
+    if (L >= 9) return { L: 9, n: 1 };
+    return { sali: L + 1 };
+  }
+  // danni delle manifestazioni sul livello di incantatore: n dadi ogni k livelli, minimo 1 dado, massimo max
+  const danniVenti = (dv, li) => Math.max(1, Math.min(dv.max, dv.n * Math.floor(li / dv.k))) + 'd' + dv.f;
+  // slot spesi da un lancio: 1 (preparato) o 2 (non preparato); con l'effetto «slot doppi» 2 o 3;
+  // il 20 (e lo slot non consumato delle manifestazioni) ne fa risparmiare uno (W4)
+  const slotLancio = (nonPrep, doppi, libero) => (nonPrep ? 2 : 1) + (doppi ? 1 : 0) - (libero ? 1 : 0);
+  // durata di un effetto dei Venti, con la quantità già tirata: {riposi: N} (giorni: −1 a ogni Riposo),
+  // {fine: 'riposo'} (minuti e ore), {fine: 'termina'} (mesi e per sempre), {fine: 'subito'} (round)
+  function durataEffetto(dur, q) {
+    if (!dur) return { fine: 'termina' };
+    if (dur.u === 'round') return { fine: 'subito' };
+    if (dur.u === 'minuti' || dur.u === 'ore') return { fine: 'riposo' };
+    if (dur.u === 'giorni') return { riposi: q * (dur.x || 1) };
+    if (dur.u === 'riposi') return { riposi: q };
+    return { fine: 'termina' };
+  }
+  // ritardo in round di un incantesimo inceppato (round, minuti, ore)
+  const roundRitardo = (q, u) => q * ({ round: 1, minuti: 10, ore: 600 }[u] || 1);
+  // quantità di una durata: «1d4» tirato, «24» fisso
+  const quantita = (q, rnd) => /d/.test(q) ? tira(q, rnd).tot : (+q || 0);
+  // livello più alto con slot (per «Perdi per sempre 1 slot del livello più alto che hai»)
+  function livelloPiuAlto(tot) { let m = null; for (const L in tot) if (+L > 0 && tot[L] > 0) m = m == null ? +L : Math.max(m, +L); return m; }
+
   // ---------------------------------------------------------------- incantesimi di ricerca
   // numeri della lista già occupati → numero tirato (1-based) fra quelli liberi; rnd ∈ [0,1)
   function tiroRicerca(lunghezza, occupati, rnd) {
@@ -310,31 +361,36 @@ const Motore = (function () {
   const caricheMax = (nome, scelta) => curaConCariche(nome) ? Math.min(3, Math.max(1, Math.floor(+scelta) || 3)) : 1;
 
   // ---------------------------------------------------------------- dadi
-  function tira(espr, rnd) {
+  // rit (Forzare i Venti): i risultati fino a rit (1 o 2) si ritirano una volta e si tiene il secondo
+  function tira(espr, rnd, rit) {
     rnd = rnd || Math.random;
     const m = String(espr).match(/^(\d+)d(\d+)(?:\+(\d+))?/);
     if (!m) return null;
-    let tot = 0; const tiri = [];
-    for (let i = 0; i < +m[1]; i++) { const r = 1 + Math.floor(rnd() * +m[2]); tiri.push(r); tot += r; }
-    return { tot: tot + (+m[3] || 0), tiri };
+    let tot = 0, ritirati = 0; const tiri = [];
+    for (let i = 0; i < +m[1]; i++) {
+      let r = 1 + Math.floor(rnd() * +m[2]);
+      if (rit && r <= rit) { r = 1 + Math.floor(rnd() * +m[2]); ritirati++; }
+      tiri.push(r); tot += r;
+    }
+    return { tot: tot + (+m[3] || 0), tiri, ritirati };
   }
   // tiro di un valore calcolato: «3 × 1d4+1», «7d6 (+50%)», «42 + metà di 7d6», «9 m · caduta 3d6», «10d6 (15 m)»
   // → {tot, colpi: [totale di ogni colpo], tiri: [dadi]} oppure null se non c'è niente da tirare
   const tirabile = espr => /\d+d\d+/.test(String(espr)) || /^\d+ × \d+$/.test(String(espr));
-  function tiraValore(espr, rnd) {
+  function tiraValore(espr, rnd, rit) {
     let s = String(espr), n = 1;
     const mc = s.match(/^(\d+) × (.+)$/);
     if (mc) { n = +mc[1]; s = mc[2]; }
     const uno = () => {
       let m = s.match(/^(\d+) \+ metà di (\d+d\d+(?:\+\d+)?)/);
-      if (m) { const r = tira(m[2], rnd); return { tot: +m[1] + Math.floor(r.tot / 2), tiri: r.tiri }; }
+      if (m) { const r = tira(m[2], rnd, rit); return { tot: +m[1] + Math.floor(r.tot / 2), tiri: r.tiri, ritirati: r.ritirati }; }
       m = s.match(/\d+d\d+(?:\+\d+)?/);
-      if (m) { const r = tira(m[0], rnd); return { tot: /\(\+50%\)/.test(s) ? Math.floor(r.tot * 1.5) : r.tot, tiri: r.tiri }; }
-      if (/^\d+$/.test(s)) return { tot: +s, tiri: [] };
+      if (m) { const r = tira(m[0], rnd, rit); return { tot: /\(\+50%\)/.test(s) ? Math.floor(r.tot * 1.5) : r.tot, tiri: r.tiri, ritirati: r.ritirati }; }
+      if (/^\d+$/.test(s)) return { tot: +s, tiri: [], ritirati: 0 };
       return null;
     };
-    const out = { tot: 0, colpi: [], tiri: [] };
-    for (let i = 0; i < n; i++) { const r = uno(); if (!r) return null; out.tot += r.tot; out.colpi.push(r.tot); out.tiri.push(...r.tiri); }
+    const out = { tot: 0, colpi: [], tiri: [], ritirati: 0 };
+    for (let i = 0; i < n; i++) { const r = uno(); if (!r) return null; out.tot += r.tot; out.colpi.push(r.tot); out.tiri.push(...r.tiri); out.ritirati += r.ritirati; }
     return out;
   }
 
@@ -342,6 +398,8 @@ const Motore = (function () {
     livelliMagia, maxLivello, requisito, siApplica, somma, LI, CD, RI, concentrazione, cdConcentrazione, servePerCD,
     raggio, gradino, GRADINI, RAGGI_STD, durata, durataRound: duratamRound, concentrazioneDurata, interrompibile, tempoTesto,
     formula, incrementi, compatibile, slotDaSpendere, reagente, tiroRicerca, liMinimo, cdOggetto, cdUcmPergamena,
-    CD_UCM_BACCHETTA, curaConCariche, caricheMax, cdSovraccarico, tira, tiraValore, tirabile, colpi, conteggio };
+    CD_UCM_BACCHETTA, curaConCariche, caricheMax, cdSovraccarico, tira, tiraValore, tirabile, colpi, conteggio,
+    maxForzare, potenziamento, sogliaVenti, malusVenti, esitoVenti, cdProvaVenti, manifestazione, danniVenti, slotLancio,
+    durataEffetto, roundRitardo, quantita, livelloPiuAlto };
 })();
 if (typeof module !== 'undefined') module.exports = Motore;

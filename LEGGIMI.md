@@ -1,6 +1,6 @@
 # Libro degli incantesimi
 
-Incantesimi dei personaggi della Collana (Vol. 4 Libro degli incantesimi 2.4.4, Vol. 2 Classi 2.5.20, Vol. 3 Miscellanea 2.5.10): più personaggi, conosciuti con le R, preparati e slot del giorno, CD, livello di incantatore, raggi, durate e danni calcolati, bonus permanenti, metamagia, Concentrazione, pergamene e bacchette. Pensata per il telefono, con tema chiaro e scuro.
+Incantesimi dei personaggi della Collana (Vol. 4 Libro degli incantesimi 2.4.5, Vol. 2 Classi 2.5.20, Vol. 3 Miscellanea 2.5.10): più personaggi, conosciuti con le R, preparati e slot del giorno, CD, livello di incantatore, raggi, durate e danni calcolati, bonus permanenti, metamagia, Concentrazione, pergamene e bacchette, regola opzionale dei Venti della magia (Forzare i Venti, tiro dei Venti, manifestazioni, effetti). Pensata per il telefono, con tema chiaro e scuro.
 
 ## Scaricare l'app
 Nella pagina **Releases** del repository:
@@ -19,9 +19,9 @@ Le app si ricompilano da sole a ogni aggiornamento del ramo `main`.
 Le icone si rigenerano con `python3 sorgenti/icone.py`.
 
 ## Decisioni di design
-Vedi `Incantesimi_app_design_v5.md`.
+Vedi `Incantesimi_app_design_v6.md` (Venti della magia: §15).
 
 ## Struttura
-- `sorgenti/parse_incantesimi.py`: schede, liste numerate, tabelle del Cap. 1, controllo delle tabelle del Vol. 2, metamagia; in fondo `CORREZIONI` per le formule di danno che i modelli non riconoscono.
+- `sorgenti/parse_incantesimi.py`: schede, liste numerate, tabelle del Cap. 1, sezione «Venti della magia (regola opzionale)» del Cap. 1 (testo, Forzare i Venti, 9 tabelle d12, tipo di ogni voce ricavato dal testo), controllo delle tabelle del Vol. 2, metamagia; in fondo `CORREZIONI` per le formule di danno che i modelli non riconoscono.
 - `sorgenti/motore.js`: calcoli (slot, conosciuti, preparati, CD, livello di incantatore, raggi, durate, formule, metamagia, Concentrazione, oggetti), testati da `test_motore.js`.
 - `sorgenti/template.html`: interfaccia (Personaggio · Oggi · Libro · Oggetti); i personaggi stanno nel `localStorage` con la chiave `libro-incantesimi-v1`.

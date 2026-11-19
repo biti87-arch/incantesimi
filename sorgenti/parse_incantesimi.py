@@ -7,7 +7,7 @@ Fonti (in sorgenti/docx/, nomi nelle costanti qui sotto):
 Stampa solo conteggi e segnalazioni (anomalie del manuale: vanno lette)."""
 import json, os, re, sys
 R = os.path.dirname(os.path.abspath(__file__))
-VOL4 = 'Vol. 4 - Libro degli incantesimi 2.4.4'
+VOL4 = 'Vol. 4 - Libro degli incantesimi 2.4.5'
 VOL2 = 'Vol. 2 - Classi 2.5.20'
 VOL3 = 'Vol. 3 - Miscellanea 2.5.10'
 GOLARION = os.path.join(R, 'metamagia_golarion.json')
@@ -490,10 +490,126 @@ for m in meta:
 for nome in EFFETTI:
     if not any(m['n'] == nome for m in meta): segnala('metamagia senza dati:', nome)
 
+# ---------------------------------------------------------------- Vol. 4: Venti della magia (regola opzionale, design v6 §15)
+# Testo della regola, tabella di Forzare i Venti e 9 tabelle d12 delle manifestazioni, letti dal Cap. 1.
+# Il tipo di ogni voce si ricava dal testo (niente elenchi a mano); quello che non torna va nelle segnalazioni.
+def leggi_venti():
+    i0 = cerca('Venti della magia (regola opzionale)')
+    fine = cerca('Incantesimi conosciuti e lanciabili', i0)
+    if 'Warp' in ' '.join(P[k]['t'] for k in range(i0, fine)): segnala('Venti: «Warp» ancora nel testo (deve essere «Vuoto»)')
+    regola, forzare, tabelle = [], [], {}
+    k = i0 + 1
+    while k < fine:
+        p = P[k]
+        if p['c']:
+            k += 1; continue
+        t = p['t'].strip()
+        if t == 'Potenziamenti di Forzare i Venti':
+            for r in tabella(P, prossima_tabella(P, k))[1:]:
+                nome, scatta, man = r[0], r[1], r[2]
+                ch = ('rit12' if re.search(r'risultati di 1 e di 2', nome) else 'rit1' if re.search(r'risultati di 1 ', nome)
+                      else 'focus' if nome.startswith('Focus') else 'cd' if 'alla CD' in nome else 'ri' if 'alla RI' in nome else None)
+                if not ch: segnala('Venti, Forzare: potenziamento non riconosciuto', nome)
+                m = re.search(r'([+−-])(\d+)', nome)
+                forzare.append({'k': ch, 'n': nome, 'scatta': int(scatta.replace('+', '')),
+                                'd12': 0 if man.strip() in ('—', '-') else int(re.search(r'(\d+)', man).group(1)),
+                                'v': (-1 if m and m.group(1) in '−-' else 1) * int(m.group(2)) if m and ch in ('focus', 'cd', 'ri') else None})
+            k += 1; continue
+        m = re.match(r'Manifestazioni degli incantesimi di (\d)° livello$', t)
+        if m:
+            L = int(m.group(1))
+            righe = tabella(P, prossima_tabella(P, k))[1:]
+            tabelle[L] = righe
+            k += 1; continue
+        if t and t != 'Tabelle delle manifestazioni':
+            regola.append({'t': t, 'h': p['h']})
+        k += 1
+    if len(forzare) != 5 or {f['k'] for f in forzare} != {'focus', 'rit1', 'rit12', 'cd', 'ri'}:
+        segnala('Venti, Forzare: righe', [f['k'] for f in forzare], '(attese 5: focus, rit1, cd, ri, rit12)')
+    if sorted(tabelle) != list(range(1, 10)): segnala('Venti: tabelle trovate', sorted(tabelle), '(attese 1–9)')
+    voci = {}
+    conti = {}
+    for L, righe in sorted(tabelle.items()):
+        if [r[0] for r in righe] != [str(n) for n in range(1, 13)]:
+            segnala(f'Venti, tabella del {L}°: numeri', [r[0] for r in righe])
+        voci[L] = []
+        for r in righe:
+            v = voce_venti(L, int(r[0]), r[1])
+            voci[L].append(v)
+            for x in v['dove']: conti[x] = conti.get(x, 0) + 1
+    # «danni come la voce 2»
+    for L in voci:
+        for v in voci[L]:
+            m = re.search(r'danni come la voce (\d+)', v['t'])
+            if m:
+                ref = voci[L][int(m.group(1)) - 1].get('dv')
+                if ref: v['dv'] = dict(ref, i=m.start(), j=m.end(), rif=int(m.group(1)))
+                else: segnala(f'Venti {L}°/{v["n"]}: la voce {m.group(1)} non ha danni')
+    print('Venti: regola', len(regola), 'paragrafi · Forzare', len(forzare), '· tabelle', len(voci), '·', ' '.join(f'{k} {n}' for k, n in sorted(conti.items())))
+    return {'regola': regola, 'forzare': forzare, 'tab': {str(L): voci[L] for L in voci}}
+
+UNITA_V = {'round': 'round', 'minuto': 'minuti', 'minuti': 'minuti', 'ora': 'ore', 'ore': 'ore', 'giorno': 'giorni', 'giorni': 'giorni',
+           'notte': 'giorni', 'notti': 'giorni', 'mese': 'mesi', 'mesi': 'mesi'}
+RANGO = {'round': 0, 'minuti': 1, 'ore': 2, 'riposi': 3, 'giorni': 3, 'mesi': 4, 'sempre': 5}
+def voce_venti(L, n, t):
+    v = {'n': n, 't': t}
+    fascia = 'grave' if n == 1 else 'danno' if n <= 5 else 'deviato' if n <= 8 else 'stranezza' if n <= 11 else 'capriccio'
+    v['parte'] = (fascia == 'deviato' and not t.startswith('Al posto dell')) or bool(re.search(r'parte normalmente', t))
+    m = re.search(r'(\d+)d(\d+) (?:danni )?(?:ogni (\d+) livelli|per livello) di incantatore \(minimo \d+d\d+, massimo (\d+)d\d+\)', t)
+    if m: v['dv'] = {'n': int(m.group(1)), 'f': int(m.group(2)), 'k': int(m.group(3) or 1), 'max': int(m.group(4)), 'i': m.start(), 'j': m.end()}
+    elif fascia == 'danno' and re.search(r'danni per livello|livelli di incantatore', t): segnala(f'Venti {L}°/{n}: danni non riconosciuti')
+    a = {}
+    alt = re.search(r'se non ha valori variabili, (è esteso|non consuma lo slot)', t)
+    senza_alt = t.replace(alt.group(0), '') if alt else t
+    if 'non consuma lo slot' in senza_alt: a['noSlot'] = True
+    m = re.search(r'come con Incantesimi (estesi|potenziati|massimizzati)', t)
+    if m:
+        a['meta'] = m.group(1)
+        if alt: a['alt'] = 'estesi' if alt.group(1) == 'è esteso' else 'noSlot'
+    m = re.search(r'perdi uno slot di (\d)° livello non ancora usato', t)
+    if m: a['perdi'] = int(m.group(1))
+    if 'consumano 2 slot se preparati, 3 se non preparati' in t: a['doppi'] = True
+    if re.search(r'fa scattare la prova di incantatore con 1–2', t): a['prova12'] = True
+    m = re.search(r'manifestazioni hanno −(\d) al d12', t)
+    if m: a['malus'] = int(m.group(1))
+    if 'non fa scattare la prova' in t: a['noProva'] = True
+    if t.startswith('Perdi per sempre 1 slot'): a['perso'] = True
+    if 'serve una prova di Concentrazione' in t: a['conc'] = True
+    if a: v['app'] = a
+    # incantesimo in ritardo o che si ripete → Incantesimi attivi
+    m = re.search(r'(\d+d\d+|\d+) (round|minuti|ore) dopo', t) or re.search(r'nei (\d+d\d+) (round) successivi', t)
+    if m: v['rit'] = {'q': m.group(1), 'u': UNITA_V[m.group(2)]}
+    # durata più lunga dell'effetto
+    durs = [{'q': x.group(1), 'u': UNITA_V[x.group(2)]} for x in re.finditer(r'[Pp]er (\d+d\d+(?:\+\d+)?|\d+) (round|minut[oi]|or[ae]|giorn[oi]|nott[ei]|mes[ei])\b', t)]
+    m = re.search(r'entro (\d+d\d+) giorni', t)
+    if m: durs.append({'q': m.group(1), 'u': 'giorni'})
+    m = re.search(r'ottenete (\d+d\d+(?:\+\d+)?) livelli negativi.*al ritmo di 1 (al giorno|alla settimana|al mese)', t)
+    if m: durs.append({'q': m.group(1), 'u': {'al giorno': 'giorni', 'alla settimana': 'settimane', 'al mese': 'mesi'}[m.group(2)]})
+    m = re.search(r'subisci (\d+d\d+) danni alla caratteristica.*al ritmo di 1 punto al giorno', t)
+    if m: durs.append({'q': m.group(1), 'u': 'giorni'})
+    if 'fino al prossimo riposo' in t: durs.append({'q': '1', 'u': 'riposi'})
+    if 'dopo due riposi' in t: durs.append({'q': '2', 'u': 'riposi'})
+    if 'per sempre' in t.lower() or 'Solo Rigenerazione' in t: durs.append({'q': '', 'u': 'sempre'})
+    for d in durs:
+        if d['u'] == 'settimane': d['u'] = 'giorni'; d['x'] = 7
+    if durs: v['dur'] = max(durs, key=lambda d: RANGO[d['u']])
+    dove = []
+    if a.get('noSlot') or a.get('meta') or a.get('perdi'): dove.append('applica')
+    if 'rit' in v: dove.append('attivi')
+    lunga = 'dur' in v and RANGO[v['dur']['u']] >= 1 and not re.search(r'(?<!se non ne hai, )nessun effetto', t)
+    if lunga and 'rit' not in v: dove.append('effetti')
+    if any(a.get(k) for k in ('doppi', 'prova12', 'noProva', 'perso', 'conc')) and 'effetti' not in dove:
+        segnala(f'Venti {L}°/{n}: effetto da applicare senza durata riconosciuta')
+    if not dove: dove.append('testo')
+    v['dove'] = dove
+    return v
+
+venti = leggi_venti()
+
 # ---------------------------------------------------------------- uscita
 dati = {'fonti': {'vol4': VOL4, 'vol2': VOL2, 'vol3': VOL3},
         'classi': CLASSI, 'gruppi': gruppi, 'bonus': bon, 'concentrazione': conc,
-        'liste': liste_idx, 'schede': schede, 'metamagia': meta}
+        'liste': liste_idx, 'schede': schede, 'metamagia': meta, 'venti': venti}
 json.dump(dati, open(os.path.join(R, 'incantesimi.json'), 'w', encoding='utf8'), ensure_ascii=False, separators=(',', ':'))
 open(os.path.join(R, 'segnalazioni.txt'), 'w', encoding='utf8').write('\n'.join(SEGN) + '\n')
 print('segnalazioni', len(SEGN), '→ sorgenti/segnalazioni.txt')

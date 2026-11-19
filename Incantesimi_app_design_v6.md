@@ -1,6 +1,6 @@
-# Libro degli incantesimi — design dell'app v5
+# Libro degli incantesimi — design dell'app v6
 
-STATO LAVORO: design confermato da Massy a blocchi il 16/11/2026 (blocchi 1–5); v2: bonus di livello 0 anche per Magus, Necrarca e Sigillatore; app v1.0.1 rilasciata il 16/11. **v3 (17/11/2026)**: bacchette con 1 carica al giorno come nel Vol. 3 (H2), dati riallineati a Vol. 2 2.5.20, Vol. 3 2.5.10 e Vol. 4 2.4.2 (§14), confermati da Massy. **v4 (17/11)**: sovraccarico delle bacchette (H3), tema scuro di base (§0), più conosciuti scelti alla volta (B1); app v1.0.2. **v5 (18-19/11/2026, confermata da Massy)**: R cumulative (B1), colpi multipli, bonus e misure che crescono col livello, altezze e danni da caduta (D5), tiro dei dadi visibile nella scheda (F8), rimandi del Cap. 3 tolti dalle schede (§1), Vol. 4 2.4.4 (§14). Prossimo passo: Venti della magia (`Venti_della_magia_design_v3.md` §5).
+STATO LAVORO: design confermato da Massy a blocchi il 16/11/2026 (blocchi 1–5); v2: bonus di livello 0 anche per Magus, Necrarca e Sigillatore; app v1.0.1 rilasciata il 16/11. **v3 (17/11/2026)**: bacchette con 1 carica al giorno come nel Vol. 3 (H2), dati riallineati a Vol. 2 2.5.20, Vol. 3 2.5.10 e Vol. 4 2.4.2 (§14), confermati da Massy. **v4 (17/11)**: sovraccarico delle bacchette (H3), tema scuro di base (§0), più conosciuti scelti alla volta (B1); app v1.0.2. **v5 (18-19/11/2026, confermata da Massy)**: R cumulative (B1), colpi multipli, bonus e misure che crescono col livello, altezze e danni da caduta (D5), tiro dei dadi visibile nella scheda (F8), rimandi del Cap. 3 tolti dalle schede (§1), Vol. 4 2.4.4 (§14). **v6 (19/11/2026, confermata da Massy a punti)**: regola opzionale **Venti della magia** (§15, da `Venti_della_magia_design_v3.md` §5 e dalle decisioni W1–W3 di questa chat), dati dal **Vol. 4 2.4.5** (2.4.4 + «Incantesimi penetranti» al posto di «Incantesimi inarrestabili» in Forzare i Venti). Prossimo passo: codice, prova, pagina di prova; push dopo la conferma.
 
 ## 0. Identità
 
@@ -20,7 +20,7 @@ STATO LAVORO: design confermato da Massy a blocchi il 16/11/2026 (blocchi 1–5)
 
 | Dato | Fonte | File dei dati |
 |---|---|---|
-| 1.708 schede (1.650 delle liste + 58 concesse dai privilegi) | Vol. 4 2.4.4 (docx), Cap. 3; i 355 rimandi «Nome → N° livello (qui per …)» non sono testo delle schede e il parser li salta | `schede.json` |
+| 1.708 schede (1.650 delle liste + 58 concesse dai privilegi) | Vol. 4 2.4.5 (docx), Cap. 3; i 355 rimandi «Nome → N° livello (qui per …)» non sono testo delle schede e il parser li salta | `schede.json` |
 | 15 liste con la numerazione per livello (servono le R) | Vol. 4 2.4.2, Cap. 2 | `liste.json` |
 | Conosciuti e lanciabili per gruppo (9°, 6°, 4°), con le «R» | Vol. 4 2.4.2, Cap. 1 | `tabelle.json` |
 | Modificatori di caratteristica e incantesimi bonus (1–45) | Vol. 4 2.4.2, Cap. 1 | `tabelle.json` |
@@ -29,6 +29,7 @@ STATO LAVORO: design confermato da Massy a blocchi il 16/11/2026 (blocchi 1–5)
 | Metamagia: i 22 talenti del Vol. 3 | Vol. 3 2.5.10 | `metamagia.json` |
 | Metamagia: i 43 talenti di Golarion (44 estratti, Incantesimi tenaci vale quello del Vol. 3) | pagine di golarion.altervista.org | `metamagia.json` |
 | Modelli di bonus (talenti comuni) | golarion | `modelli.json` |
+| Venti della magia: testo, tabella di Forzare i Venti, 9 tabelle d12 delle manifestazioni | Vol. 4 2.4.5, Cap. 1, «Venti della magia (regola opzionale)» | `venti` in `incantesimi.json` (§15) |
 
 - Il parser legge il docx (regex sull'XML con i flag, come le altre app). I campi delle schede sono: Scuola, Livello, Tempo di lancio, Componenti, Raggio d'azione, Bersaglio/Area/Effetto, Durata, Tiro Salvezza, Resistenza agli incantesimi, Concesso da, più la descrizione.
 - Il parser confronta le tabelle per gruppo del Vol. 4 con quelle di ogni classe del Vol. 2 corrente e **segnala** le differenze senza scegliere. Nota: il vecchio `tabelle_vol2_2.5.18.json` della Fase 4 non ha la colonna 0 dei lanciabili dell'Inquisitore, che invece c'è nel Vol. 2 2.5.19: si legge dai volumi correnti, non da quel JSON.
@@ -176,7 +177,7 @@ La caratteristica resta modificabile a mano (archetipi come il vessatore). Ogni 
 - **H3** **Sovraccaricare una bacchetta** (Vol. 3; Massy, 17/11): casella «Sovraccarica» nel dialogo «Usa», sia con l'incantesimo in lista sia dopo la prova di Utilizzare congegni magici.
   - Prova di incantatore 1d20 + LI dell'utilizzatore, **CD 7 + livello dell'incantesimo + LI dell'utilizzatore** (in pratica d20 ≥ 7 + livello). LI e CD sono quelli della classe che ha l'incantesimo in lista, altrimenti della classe attiva.
   - Riuscita: l'incantesimo usa LI e CD dell'utilizzatore (10 + livello + bonus della caratteristica + bonus di CD), senza talenti. Fallita: l'incantesimo parte comunque con i valori della bacchetta e quella bacchetta non si sovraccarica più fino al Riposo. In entrambi i casi si consuma la carica.
-  - Promemoria nel dialogo: «si applica la regola opzionale Maledizione di Tzeentch (Vol. 3): chiedi al DM».
+  - Con i Venti della magia accesi (§15): tiro dei Venti dopo il sovraccarico, riuscito o fallito, senza Forzare; con i Venti spenti nessun promemoria.
 
 ## 11. Fuori dall'app
 
@@ -188,7 +189,7 @@ Riserve di classe (Scorta arcana, Riserva arcana e simili: Tracker di classe, ri
 - ✅ Vol. 3, Bacchette 0–4° e Incantesimi a catena con requisito Incantesimi Inarrestabili (Vol. 3 2.5.10, 16/11).
 - ✅ Vol. 3, Incantesimo ingannatore e Incantesimo consacrato: riga «Incremento di livello» (Vol. 3 2.5.10); `META_INC` del parser ora è vuoto.
 - **Schede con danni non da formula**: 11 schede con dadi e «livello» che i modelli non riconoscono (Ora della dipartita, Colpo doloroso, Infusione elementale, Lance di ghiaccio, Ostacolare evocazione, Richiesta planare, Cerchi di debilitazione, Colpo doloroso di massa, Teschio esplosivo necrotico, Kraken d'ombra, Eruzione ectoplasmatica): mostrano il testo com'è; se servono, formule a mano in `CORREZIONI` di `parse_incantesimi.py`.
-- **Maledizione di Tzeentch**: il Vol. 3 la cita due volte come «regola opzionale» (sovraccarico delle bacchette; Essenza di acciaio arcano: «lanciare gratuitamente gli incantesimi con un risultato di 19-20 (anziché di 20)»), ma nessun manuale della Collana la descrive (cercata in Vol. 1–4, Guida del DM e manuali aggiuntivi il 17/11). L'app mostra solo il promemoria; se la regola viene scritta, si può aggiungere il test al dialogo del sovraccarico.
+- ✅ **Maledizione di Tzeentch**: scritta nel Vol. 4 2.4.3 («Venti della magia (regola opzionale)»), nell'app con la v6 (§15).
 - Prova dell'APK e dell'app Windows sul telefono e sul PC (Massy).
 
 ## 13. Piano dei lavori
@@ -206,4 +207,68 @@ Riserve di classe (Scorta arcana, Riserva arcana e simili: Tracker di classe, ri
 |---|---|---|
 | v1.0.1 / win-1.0.1 | 16/11/2026 | prima versione (design v2): Vol. 4 2.4.1, Vol. 2 2.5.19, Vol. 3 2.5.9 |
 | v1.0.2 / win-1.0.2 | 17/11/2026 | design v4: sovraccarico (H3), tema scuro di base, più conosciuti alla volta; design v3: bacchette con 1 carica al giorno (H2); Vol. 4 2.4.2 (raggi di Bolle di sapone, Brontolare, Evoca Amarok, Muro di tenebre), Vol. 2 2.5.20 (nessuna differenza nei dati), Vol. 3 2.5.10 (Incantesimo ingannatore +1; nota di Incantesimo consacrato senza il testo del talento seguente) |
-| prossima | 19/11/2026 | design v5: R cumulative, colpi multipli, bonus e misure col livello, altezze e cadute, tiro visibile nella scheda, rimandi tolti; Vol. 4 2.4.4 (dati delle schede, liste e tabelle identici alla 2.4.2) |
+| v1.0.3 / win-1.0.3 | 19/11/2026 | design v5: R cumulative, colpi multipli, bonus e misure col livello, altezze e cadute, tiro visibile nella scheda, rimandi tolti; Vol. 4 2.4.4 (dati delle schede, liste e tabelle identici alla 2.4.2) |
+| prossima | 19/11/2026 | design v6: Venti della magia (§15); Vol. 4 2.4.5 |
+
+## 15. Venti della magia (regola opzionale) — v6
+
+Fonti: Vol. 4 2.4.5, Cap. 1, «Venti della magia (regola opzionale)» (fa fede); `Venti_della_magia_design_v3.md` §5 (già confermato il 17/11); Vol. 3 2.6, «Sovraccaricare una bacchetta» ed «Essenza di acciaio arcano». Decisioni W1–W4: Massy, 19/11/2026, in chat.
+
+### 15.1 Interruttore e dati
+
+- **V1** Interruttore per personaggio «Venti della magia (regola opzionale)» nel riquadro omonimo della scheda Personaggio, **spento di base**. Spento: l'app lavora come la v1.0.3 e non mostra nulla dei Venti (niente Forzare, niente tiro, niente Essenza, niente effetti); gli effetti già salvati restano nei dati ma nascosti e non si applicano.
+- **V2** Il parser legge dal docx: i due capoversi delle regole, la tabella di Forzare i Venti (potenziamento, «la prova scatta anche con», malus al d12), le 9 tabelle d12. Niente dati scritti a mano. Il **tipo** di ogni voce (§15.5) si ricava dal testo con regole sul testo; le voci che non riesce a classificare e le anomalie (tabella senza 12 righe, numeri fuori posto, «Warp» rimasti) vanno in `segnalazioni.txt`.
+
+### 15.2 Forzare i Venti (W2)
+
+- Nel riquadro «Lancio», fra la metamagia e «Slot da usare»: «Forza i Venti (n/max)» con le 5 caselle del manuale, per incantesimi di **1° livello o superiore** con Lancia, Slot superiore e **Non preparato** (la metamagia no, Forzare sì). Mai con pergamene, bacchette e sovraccarico.
+- Massimo: 1/2/3/4 dal 1°/6°/11°/16° livello, sulla **somma dei livelli delle classi incantatrici** del personaggio (fino a 2 nell'app). Raggiunto il massimo le altre caselle si spengono; i due ritiri si escludono.
+- Riepilogo sotto le caselle: «La prova scatta con 1–N · d12 −M».
+- Effetti nella scheda del lancio: **Focus** → pulsante di Concentrazione +3; **+1 CD** → CD del Tiro Salvezza +1; **−5 RI** → «(RI del bersaglio −5)»; **ritiri** → i dadi tirati nella scheda ritirano **una volta** gli 1 (o gli 1 e i 2) e tengono il secondo risultato; il riquadro del tiro dice quanti dadi sono stati ritirati.
+- **Metamagia**: il −5 alla RI conta come **Incantesimi penetranti** (nome di golarion di Piercing Spell, il talento che l'app già ha) e non si cumula: con Incantesimi penetranti spuntato la casella del −5 si spegne con la nota «già con Incantesimi penetranti», e viceversa. Il Vol. 4 2.4.4 diceva per errore «Incantesimi inarrestabili» (Spell Penetration, +2 a superare la RI, talento normale): corretto nel **Vol. 4 2.4.5** (Massy, 19/11). Gli altri quattro potenziamenti non hanno un talento uguale fra i 65 dell'app. I bonus permanenti (Incantesimi focalizzati, Incantesimi inarrestabili…) non sono metamagia e si sommano.
+
+### 15.3 Tiro dei Venti e manifestazioni
+
+- **Lancia / Slot superiore / Non preparato** con i Venti accesi e incantesimo di 1° o superiore: invece di lanciare subito si apre il passo «Tiro dei Venti» (pulsante «Tira» o risultato inserito a mano 1–20, come gli altri tiri dell'app). Il livello dell'incantesimo è quello della scheda (con Incantesimi intensificati, quello intensificato).
+- **20** → lancio senza consumare lo slot (da non preparato 1 invece di 2), con avviso. Con l'Essenza (§15.4) anche il 19.
+- **Numero che fa scattare la prova** (1, più gli allargamenti di Forzare, base 1–2 con gli effetti «prova con 1–2») → prova di incantatore «serve d20 ≥ N» con N = 15 + livello dell'incantesimo − LI (se N ≤ 1: «riesce con qualsiasi risultato»), pulsanti Tira / Riuscita / Fallita.
+  - Riuscita → lancio normale.
+  - Fallita → slot speso e **manifestazione**: d12 con la somma dei malus (Forzare e −2 della voce 5 del 9°); con 0 o meno si ritira 1d12 senza modificatori sulla tabella del livello successivo, al 9° si applica il risultato 1. L'app mostra il tiro, la tabella usata e la voce, con i danni calcolati sul LI («1d6 per livello di incantatore (minimo 1d6, massimo 10d6) → **7d6**») e i dadi del testo tirabili.
+  - Fasce **6–8**: l'incantesimo parte (entra negli attivi come un lancio normale) e si riapre la scheda per tirarne i dadi; le altre fasce: dissolto, tranne le voci che dicono che parte normalmente (le 12).
+- Nessun tiro si ripete: dopo il risultato i pulsanti di quel passo si spengono. «Annulla ultimo lancio» riporta il personaggio a prima del lancio, effetti dei Venti compresi.
+- Altri numeri → lancio normale.
+- **Bacchette sovraccaricate** (H3): con i Venti accesi, dopo il sovraccarico riuscito o fallito, tiro dei Venti **senza Forzare**, sul livello dell'incantesimo della bacchetta e col LI con cui parte l'incantesimo (dell'utilizzatore se il sovraccarico riesce, della bacchetta se fallisce). Il **20 non ha effetto** (la regola risparmia uno slot, la bacchetta usa una carica) e l'Essenza non scatta. Prova e manifestazione come sopra; la carica si consuma comunque.
+
+### 15.4 Essenza di acciaio arcano (W1)
+
+- Casella «Indosso un'armatura con Essenza di acciaio arcano» nel riquadro dei Venti, spenta di base, visibile solo con i Venti accesi.
+- Con un **19** e l'Essenza pronta: il 19 conta come 20 (automatico), avviso «Essenza attivata: sopita per 12 giorni» e riga «Essenza sopita — N giorni» negli Effetti dei Venti. Con il 20 l'Essenza non si attiva (resta pronta). Vale anche col risultato inserito a mano; non con le bacchette.
+- La riga scende di 1 a ogni **Riposo** e ha il pulsante «**Di nuovo pronta**», che azzera tutti i giorni in una volta (Massy, 19/11).
+
+### 15.5 Effetti dei Venti e voci non applicabili (W3)
+
+Il riquadro della manifestazione mostra sempre la voce intera. Poi, secondo il tipo ricavato dal testo:
+
+| Tipo | Riconosciuto da | Nell'app |
+|---|---|---|
+| Slot non consumato | «non consuma lo slot» | applicato: lo slot speso torna libero (da non preparato 1 invece di 2) |
+| Metamagia gratuita | «come con Incantesimi estesi / potenziati / massimizzati, senza costi» | applicata ai valori della scheda riaperta; «se non ha valori variabili» → esteso (5°) o slot non consumato (7°) |
+| Slot da perdere | «perdi uno slot di N° livello non ancora usato» | applicato: si spende un pallino di quel livello, se c'è |
+| Slot doppi | «consumano 2 slot se preparati, 3 se non preparati» | Effetti dei Venti; finché c'è, Lancia spende 2 slot e Non preparato 3 |
+| Prova con 1–2 | «con 1–2 invece che con 1» / «con 1–2» | Effetti; applicata al tiro; la voce 5 del 9° anche −2 al d12 |
+| Niente prova | «non fa scattare la prova» | Effetti (24 ore); applicata |
+| Slot perso per sempre | «Perdi per sempre 1 slot» | Effetti, solo «Termina»; −1 slot al livello più alto che il personaggio ha (si sposta da solo quando sale) |
+| Prova di Concentrazione per lanciare | «serve una prova di Concentrazione» | Effetti; nella scheda del lancio una riga rossa con la CD (15 + doppio del livello) e «Tira» |
+| Incantesimo in ritardo o che si ripete (round, minuti, ore) | «1d4 round dopo», «si attiva 1d10 minuti dopo», «nei 1d4 round successivi»… | Incantesimi attivi, col timer esistente e l'avviso allo scadere; il ritardo lo tira l'app |
+| Effetto lungo sul personaggio | durata di minuti o più (Punti Ferita temporanei, aura di sfortuna, livelli negativi, danni alla caratteristica…) | Effetti dei Venti, con nota e «Termina» |
+| Esito libero, ritardo del DM, stranezze senza effetto | bersagli casuali, capovolgimenti, «nel momento scelto dal DM», reami del Vuoto, «nessun effetto» | solo testo; riga negli Effetti se la durata è in giorni |
+| Durate brevi | 1 round, 1d4 round | solo testo |
+
+Durate negli Effetti: **giorni** −1 a ogni Riposo; **minuti e ore** finiscono col Riposo o con «Termina»; **mesi e per sempre** solo «Termina» (l'app non ha un calendario). Ogni riga: testo della voce (con i dadi già tirati), tabella e numero, durata rimasta, nota libera, «Termina».
+
+### 15.6 Dettagli (W4, confermati da Massy il 19/11)
+
+- Con **slot doppi** il 20 fa risparmiare comunque **uno** slot (preparato 2 → 1, non preparato 3 → 2), come nei due casi del manuale (1 → 0, 2 → 1).
+- Col 20 su uno **slot superiore** non si consuma né lo slot né l'uso dello slot superiore.
+- Manifestazione con slot superiore o metamagia: la tabella è quella del livello dell'incantesimo, non dello slot.
+- **Slot perso per sempre** (9°, voce 3): invece di un bonus fisso «Slot extra −1» (§5 del design dei Venti) è una riga degli Effetti che toglie 1 slot al livello più alto che il personaggio ha, così la perdita «si sposta su ogni nuovo livello» da sola, come dice il manuale.

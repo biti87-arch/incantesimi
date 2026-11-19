@@ -129,7 +129,8 @@ const RE_COND = new RegExp('\\b(' + COND + ')\\b', 'g');
 let ST;
 function nuovoPg(nome) {
   return { id: uid(), nome: nome || 'Nuovo personaggio', ucm: 0, note: '', ci: 0,
-    classi: [nuovaClasse('Stregone')], bonus: [], meta: [], pergamene: [], bacchette: [], attivi: [], reag: {}, annulla: null };
+    classi: [nuovaClasse('Stregone')], bonus: [], meta: [], pergamene: [], bacchette: [], attivi: [], reag: {}, annulla: null,
+    venti: { on: false, essenza: false, effetti: [] } };
 }
 function nuovaClasse(c) { return { classe: c, livello: 1, car: DATI.classi[c].car[0], punteggio: 16, con: [], prep: {}, usati: {}, sup: 0, sost: {} }; }
 function carica() {
@@ -140,6 +141,8 @@ function carica() {
     if (b.max == null) b.max = M.caricheMax(nomeCon(b), b.cariche != null ? 3 : 1);
     if (b.cariche == null) b.cariche = b.max;
   }
+  // Venti della magia (v6): spenti di base
+  for (const p of ST.pg) if (!p.venti) p.venti = { on: false, essenza: false, effetti: [] };
 }
 function salva() { try { localStorage.setItem(CHIAVE, JSON.stringify(ST)); } catch (e) { toast('Salvataggio non riuscito: ' + e.message); } }
 const PG = () => ST.pg.find(p => p.id === ST.attivo) || ST.pg[0];
@@ -184,10 +187,10 @@ function mostraTiro(html) {
   r.innerHTML = `<span>${html}</span><button class="mini" aria-label="Chiudi il tiro">✕</button>`;
   r.querySelector('button').onclick = () => r.remove();
 }
-function tiraEMostra(espr, nome) {
-  const r = M.tiraValore(espr);
+function tiraEMostra(espr, nome, rit) {
+  const r = M.tiraValore(espr, null, rit);
   if (!r) return;
-  const det = r.colpi.length > 1 ? 'colpi: ' + r.colpi.join(', ') : (r.tiri.length ? 'dadi: ' + r.tiri.join(', ') : '');
+  const det = (r.colpi.length > 1 ? 'colpi: ' + r.colpi.join(', ') : (r.tiri.length ? 'dadi: ' + r.tiri.join(', ') : '')) + (rit ? `${r.colpi.length > 1 || r.tiri.length ? ' · ' : ''}ritirati ${r.ritirati} (risultati 1${rit > 1 ? '–2' : ''})` : '');
   mostraTiro(`${nome ? esc(nome) + ' · ' : ''}${esc(espr)} → <b>${r.tot}</b>${det ? ` <span class="muted">(${det})</span>` : ''}`);
 }
 function apri(titolo, html, dopo) { $('#dlgT').textContent = titolo; $('#dlgB').innerHTML = html; if (!dlg.open) dlg.showModal(); $('#dlgB').scrollTop = 0; if (dopo) dopo($('#dlgB')); }
@@ -256,16 +259,17 @@ function htmlDesc(s, li, meta) {
 function apriScheda(o) {
   const pg = PG(), cl = o.cl || CLS(pg), ctx = ctxDi(pg, cl), s = SC[o.s];
   const L = o.L != null ? o.L : (livelloLista(cl.classe, o.s, o.v) ?? minLivello(o.s));
-  const stato = { meta: {}, intens: null, slotScelto: null };
+  const stato = { meta: {}, intens: null, slotScelto: null, forza: new Set(o.forza || []) };
   const disegnaScheda = () => {
     const tal = talentiScelti(pg, stato);
     const bd = b => ctx.bonus.filter(x => x.ambito === 'danni' && (x.modo === 'dado') === b && M.siApplica(x, s, cl.classe)).reduce((a, x) => a + (+x.valore || 0), 0);
-    const metaF = { potenziati: tal.some(t => t.eff === 'potenziati'), massimizzati: tal.some(t => t.eff === 'massimizzati'), intensi: tal.some(t => t.eff === 'intensi'), danni: o.oggetto ? null : { fissi: bd(false), dado: bd(true) } };
+    const metaF = { potenziati: tal.some(t => t.eff === 'potenziati') || o.metaGratis === 'potenziati', massimizzati: tal.some(t => t.eff === 'massimizzati') || o.metaGratis === 'massimizzati', intensi: tal.some(t => t.eff === 'intensi'), danni: o.oggetto ? null : { fissi: bd(false), dado: bd(true) } };
     const li = o.liOgg != null ? o.liOgg : M.LI(ctx, s);
     metaF.colpi = M.colpi(s, li);
     const Lcd = tal.some(t => t.eff === 'intensificati') && stato.intens ? stato.intens : L;
-    const cd = o.cdOgg != null ? o.cdOgg : M.CD(ctx, s, Lcd);
-    const fR = tal.some(t => t.eff === 'ingranditi') ? 2 : 1, fD = tal.some(t => t.eff === 'estesi') ? 2 : 1;
+    const cd = (o.cdOgg != null ? o.cdOgg : M.CD(ctx, s, Lcd)) + (stato.forza.has('cd') ? 1 : 0);
+    const fR = tal.some(t => t.eff === 'ingranditi') ? 2 : 1, fD = tal.some(t => t.eff === 'estesi') || o.metaGratis === 'estesi' ? 2 : 1;
+    const meno5 = tal.some(t => t.eff === 'penetranti') || stato.forza.has('ri');
     let rTesto = s.r || '';
     const port = tal.find(t => t.eff === 'portata');
     if (port && M.gradino(s.r) >= 0) { const g = Math.min(3, M.gradino(s.r) + (stato.portata || 1)); rTesto = M.GRADINI[g] + (M.RAGGI_STD[M.GRADINI[g]] ? ' (' + M.RAGGI_STD[M.GRADINI[g]] + ')' : ''); }
@@ -277,7 +281,7 @@ function apriScheda(o) {
     if (tal.some(t => t.eff === 'immobili')) comp = comp.replace(/\bS,?\s*/, '') + ' (Immobili: niente S)';
     const reag = M.reagente(s.reag);
     const ts = s.ts ? s.ts + (/nessuno/i.test(s.ts) ? '' : ` — <b>CD ${cd}</b>`) : '';
-    const ri = s.ri ? s.ri + (/sì/i.test(s.ri) ? ` — prova <b>+${M.RI(ctx, s, li) - (tal.some(t => t.eff === 'penetranti') ? 0 : 0)}</b>${tal.some(t => t.eff === 'penetranti') ? ' (RI del bersaglio −5)' : ''}` : '') : '';
+    const ri = s.ri ? s.ri + (/sì/i.test(s.ri) ? ` — prova <b>+${M.RI(ctx, s, li)}</b>${meno5 ? ' (RI del bersaglio −5)' : ''}` : '') : '';
     const camp = [['Scuola', esc(s.s)], ['Livello', esc(s.l || '—') + (s.cd ? '<br>Concesso da: ' + esc(s.cd) : '')],
       ['Tempo di lancio', esc(tl)], ['Componenti', esc(comp) + (reag ? ` <span class="tag">${reag.per === 'lancio' ? 'reagente ' + reag.costo + ' mo a ogni lancio' : 'reagente: ' + reag.usi + ' al ' + reag.per}</span>` : '')],
       s.r ? ['Raggio d’azione', esc(rTesto) + (rCalc ? `<span class="calc">${esc(rCalc)}</span>` : '')] : null,
@@ -287,13 +291,18 @@ function apriScheda(o) {
       ['Livello di incantatore', `<b>${li}</b>` + (o.oggetto ? ' (oggetto)' : '')]].filter(Boolean);
     let h = '';
     if (s.mod) h += '<div class="muted small">◆ Incantesimo modificato nella Collana</div>';
+    if (o.metaGratis) h += `<div class="avviso">Venti della magia: ${{ estesi: 'esteso', potenziati: 'potenziato', massimizzati: 'massimizzato' }[o.metaGratis]} senza costi.</div>`;
+    if (!o.lancio && stato.forza.size) h += `<div class="small muted">Venti forzati: ${[...stato.forza].map(k => esc(M.potenziamento(k).n)).join(' · ')}</div>`;
     h += `<dl class="campi">${camp.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('')}</dl>`;
     if (o.lancio) h += htmlLancio(pg, cl, ctx, s, o, L, stato, tal);
     if (tal.length) h += `<div class="avviso">${tal.map(t => `<b>${esc(t.n)}</b>${t.inc != null ? ' (+' + t.inc + ')' : ''}: ${esc(t.nota || t.intro || '')}`).join('<br>')}</div>`;
     h += `<div class="desc">${htmlDesc(s, li, metaF)}</div>`;
     h += `<div class="muted small">Tocca un valore con i dadi (evidenziato o sottolineato) per tirarlo; con più colpi si tira ogni colpo.</div>`;
     apri((o.v ? o.v : s.n) + (L != null ? ` · ${L}°` : ''), h, b => {
-      b.querySelectorAll('[data-tira]').forEach(x => { if (M.tirabile(x.dataset.tira)) { x.classList.add('tirabile'); x.onclick = () => tiraEMostra(x.dataset.tira); } });
+      const rit = stato.forza.has('rit12') ? 2 : stato.forza.has('rit1') ? 1 : 0;
+      b.querySelectorAll('[data-tira]').forEach(x => { if (M.tirabile(x.dataset.tira)) { x.classList.add('tirabile'); x.onclick = () => tiraEMostra(x.dataset.tira, null, rit); } });
+      b.querySelectorAll('[data-forza]').forEach(x => x.onchange = () => { const k = x.dataset.forza; if (x.checked) { stato.forza.add(k); if (k === 'rit1') stato.forza.delete('rit12'); if (k === 'rit12') stato.forza.delete('rit1'); } else stato.forza.delete(k); disegnaScheda(); });
+      const tcv = b.querySelector('#tiraConcV'); if (tcv) tcv.onclick = () => { const r = M.tira('1d20'); const tot = r.tot + +tcv.dataset.b; mostraTiro(`Concentrazione (Venti): 1d20 (${r.tot}) + ${tcv.dataset.b} = <b>${tot}</b> contro CD ${tcv.dataset.cd} → ${tot >= +tcv.dataset.cd ? 'riuscita' : '<span class="cond">fallita</span>'}`); };
       b.querySelectorAll('[data-meta]').forEach(x => x.onchange = () => { stato.meta[x.dataset.meta] = x.checked; stato.slotScelto = null; disegnaScheda(); });
       const ii = b.querySelector('#intens'); if (ii) ii.onchange = () => { stato.intens = +ii.value; stato.slotScelto = null; disegnaScheda(); };
       const pp = b.querySelector('#portata'); if (pp) pp.onchange = () => { stato.portata = +pp.value; disegnaScheda(); };
@@ -309,7 +318,13 @@ function apriScheda(o) {
 function talentiScelti(pg, stato) { return DATI.metamagia.filter(t => stato.meta[t.n]); }
 const preparato = (cl, c, L) => L === 0 || (cl.prep[L] || []).includes(keyCon(c));
 const liberi = cl => { const tot = M.slot(cl.classe, cl.livello, cl.punteggio, extraSlot(PG(), cl)); const o = {}; for (const L in tot) if (tot[L] != null) o[L] = Math.max(0, tot[L] - (cl.usati[L] || 0)); return o; };
-const extraSlot = (pg, cl) => { const o = {}; for (const b of pg.bonus) if (b.ambito === 'slot' && b.attivo !== false && (!b.classe || b.classe === cl.classe)) o[b.L] = (o[b.L] || 0) + (+b.valore || 0); return o; };
+const extraSlot = (pg, cl) => {
+  const o = {}; for (const b of pg.bonus) if (b.ambito === 'slot' && b.attivo !== false && (!b.classe || b.classe === cl.classe)) o[b.L] = (o[b.L] || 0) + (+b.valore || 0);
+  // Venti, «Perdi per sempre 1 slot del livello più alto che hai»: −1 al livello più alto, che si sposta da solo (W4)
+  const persi = effVenti(pg).filter(e => e.app && e.app.perso && (!e.classe || e.classe === cl.classe)).length;
+  if (persi) { const tot = M.slot(cl.classe, cl.livello, cl.punteggio, o); const L = M.livelloPiuAlto(tot); if (L != null) o[L] = (o[L] || 0) - Math.min(persi, tot[L]); }
+  return o;
+};
 const extraCon = (pg, cl) => { const o = {}; for (const b of pg.bonus) if (b.ambito === 'con' && b.attivo !== false && (!b.classe || b.classe === cl.classe)) o[b.L] = (o[b.L] || 0) + (+b.valore || 0); return o; };
 
 function htmlLancio(pg, cl, ctx, s, o, L, stato, tal) {
@@ -325,13 +340,30 @@ function htmlLancio(pg, cl, ctx, s, o, L, stato, tal) {
       h += '<div class="small muted" style="margin-top:6px">Metamagia (solo preparati)</div><div style="display:grid;gap:4px">';
       for (const t of poss) {
         const inc = t.eff === 'intensificati' ? '' : ` → slot ${M.incrementi([...tal.filter(x => x.n !== t.n), t], s, ctx, stato.intens, L)}°`;
-        h += `<label class="row"><input type="checkbox" data-meta="${esc(t.n)}" ${stato.meta[t.n] ? 'checked' : ''}><span class="grow">${esc(t.n)} <span class="muted small">${t.inc == null ? (t.eff === 'intensificati' ? 'livello a scelta' : 'incremento da definire') : '+' + t.inc}${inc}</span></span></label>`;
+        const blocca = t.eff === 'penetranti' && stato.forza.has('ri') && !stato.meta[t.n];   // non si cumula col −5 di Forzare i Venti
+        h += `<label class="row"><input type="checkbox" data-meta="${esc(t.n)}" ${stato.meta[t.n] ? 'checked' : ''} ${blocca ? 'disabled' : ''}><span class="grow">${esc(t.n)} <span class="muted small">${t.inc == null ? (t.eff === 'intensificati' ? 'livello a scelta' : 'incremento da definire') : '+' + t.inc}${inc}${blocca ? ' · già col −5 alla RI di Forzare i Venti' : ''}</span></span></label>`;
       }
       h += '</div>';
       if (tal.some(t => t.eff === 'intensificati')) h += `<label class="f">Intensificato al livello<select id="intens">${[...Array(10).keys()].filter(x => x > L && x <= M.maxLivello(cl.classe)).map(x => `<option ${stato.intens === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>`;
       if (tal.some(t => t.eff === 'portata')) h += `<label class="f">Gradini di portata<select id="portata">${[1, 2, 3].map(x => `<option ${(stato.portata || 1) === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>`;
       if (tal.some(t => t.eff === 'intensificati') && !stato.intens) stato.intens = Math.min(L + 1, M.maxLivello(cl.classe));
     }
+  }
+  // Venti della magia: Forzare i Venti (design v6 §15.2) ed effetti in corso
+  const V = ventiOn(pg) && L > 0, E = statoEff(pg), doppi = V && E.doppi;
+  if (V) {
+    const max = M.maxForzare(livelliIncantatore(pg)), n = stato.forza.size;
+    h += `<div class="small muted" style="margin-top:8px">Forza i Venti (${n}/${max})</div><div style="display:grid;gap:4px">`;
+    for (const f of DATI.venti.forzare) {
+      const sel = stato.forza.has(f.k);
+      const pen = f.k === 'ri' && tal.some(t => t.eff === 'penetranti');
+      const dis = !sel && (n >= max || pen);
+      h += `<label class="row"><input type="checkbox" data-forza="${f.k}" ${sel ? 'checked' : ''} ${dis ? 'disabled' : ''}><span class="grow">${esc(f.n)} <span class="muted small">prova +${f.scatta}${f.d12 ? ' · d12 −' + f.d12 : ''}${pen ? ' · già con Incantesimi Penetranti' : ''}</span></span></label>`;
+    }
+    h += '</div>';
+    const so = M.sogliaVenti([...stato.forza], E), ma = M.malusVenti([...stato.forza], E);
+    h += `<div class="small" style="margin-top:4px"><b>Venti:</b> ${so ? `la prova scatta con ${so === 1 ? '1' : '1–' + so}` : 'la prova non scatta (effetto dei Venti)'}${ma ? ` · d12 −${ma}` : ''} · ${essenzaPronta(pg) ? '19–20' : '20'}: slot non consumato</div>`;
+    if (doppi) h += `<div class="small cond">Effetto dei Venti: questo lancio spende 2 slot (3 da non preparato).</div>`;
   }
   const nec = M.incrementi(tal, s, ctx, stato.intens, L);
   const porta = tal.find(t => t.eff === 'portata');
@@ -343,42 +375,257 @@ function htmlLancio(pg, cl, ctx, s, o, L, stato, tal) {
   if (sup) h += `<div class="small ${cl.sup >= usiSup ? 'cond' : 'muted'}">Slot superiore: usi oggi ${cl.sup}/${usiSup}. La CD resta quella del ${L}° livello.</div>`;
   const reag = M.reagente(s.reag);
   if (reag) { const r = pg.reag[s.k] || 0; h += `<div class="small ${reag.per !== 'lancio' && r >= reag.usi ? 'cond' : 'muted'}">Reagente (${s.reag} mo): ${reag.per === 'lancio' ? 'il prezzo si paga a ogni lancio' : `usi gratuiti ${Math.max(0, reag.usi - r)}/${reag.usi} al ${reag.per}`}</div>`; }
-  const okL = stato.slotScelto != null && necTot <= 9 && (!sup || cl.sup < usiSup) && (prep || L === 0);
+  const okL = stato.slotScelto != null && necTot <= 9 && (!sup || cl.sup < usiSup) && (prep || L === 0) && (!doppi || !!M.slotDaSpendere(lib, stato.slotScelto, 2));
   h += `<div class="row" style="margin-top:8px">` + (prep || L === 0 ? `<button class="pri grow" id="bLancia" ${okL ? '' : 'disabled'}>Lancia</button>` : '');
   if (!prep && L > 0) {
-    const due = M.slotDaSpendere(lib, L, 2);
-    h += `<button class="pri grow" id="bNonPrep" ${due ? '' : 'disabled'}>Non preparato: 2 slot${due ? ' (' + due.join('°, ') + '°)' : ''}</button>`;
+    const nn = doppi ? 3 : 2, due = M.slotDaSpendere(lib, L, nn);
+    h += `<button class="pri grow" id="bNonPrep" ${due ? '' : 'disabled'}>Non preparato: ${nn} slot${due ? ' (' + due.join('°, ') + '°)' : ''}</button>`;
   }
   h += '</div>';
-  const cb = M.concentrazione(ctx, s, false), cbd = M.concentrazione(ctx, s, true);
-  h += `<div class="row small" style="margin-top:6px"><button class="mini" id="tiraConc" data-b="${cb}">Concentrazione +${cb}</button>` + (cbd !== cb ? `<span class="muted">sulla difensiva +${cbd} (CD ${15 + 2 * L})</span>` : `<span class="muted">sulla difensiva CD ${15 + 2 * L}</span>`) +
+  const fo = V && stato.forza.has('focus') ? 3 : 0;
+  const cb = M.concentrazione(ctx, s, false) + fo, cbd = M.concentrazione(ctx, s, true) + fo;
+  if (V && E.conc) h += `<div class="small cond" style="margin-top:6px">Effetto dei Venti: per lanciare serve una prova di Concentrazione CD ${15 + 2 * L}. <button class="mini" id="tiraConcV" data-b="${cb}" data-cd="${15 + 2 * L}">Tira</button></div>`;
+  h += `<div class="row small" style="margin-top:6px"><button class="mini" id="tiraConc" data-b="${cb}">Concentrazione +${cb}${fo ? ' (Focus)' : ''}</button>` + (cbd !== cb ? `<span class="muted">sulla difensiva +${cbd} (CD ${15 + 2 * L})</span>` : `<span class="muted">sulla difensiva CD ${15 + 2 * L}</span>`) +
     (/sì/i.test(s.ri || '') ? `<button class="mini" id="tiraRI" data-b="${M.RI(ctx, s)}">RI +${M.RI(ctx, s)}</button>` : '') + '</div>';
   return h + '</div>';
 }
 function lancia(pg, cl, ctx, s, o, L, stato, nonPrep) {
-  pg.annulla = JSON.stringify(pg);
+  if (!nonPrep && L === 0 && !preparato(cl, { s: o.s, v: o.v }, L)) return;
+  pg.annulla = JSON.stringify(Object.assign({}, pg, { annulla: null }));
+  if (ventiOn(pg) && L > 0) return flussoVenti(pg, cl, ctx, s, o, L, stato, nonPrep);
+  eseguiLancio(pg, cl, ctx, s, o, L, stato, nonPrep, {});
   const tal = nonPrep ? [] : talentiScelti(pg, stato);
-  if (nonPrep) {
-    const due = M.slotDaSpendere(liberi(cl), L, 2);
-    if (!due) return;
-    for (const l of due) cl.usati[l] = (cl.usati[l] || 0) + 1;
-  } else if (L === 0 && !preparato(cl, { s: o.s, v: o.v }, L)) {
-    return;
-  } else {
-    const l = stato.slotScelto;
-    cl.usati[l] = (cl.usati[l] || 0) + 1;
+  salva(); chiudi(); disegna();
+  toast(`Lanciato: <b>${esc(o.v || s.n)}</b>${nonPrep ? ' (2 slot)' : ''}${tal.length ? ' · ' + tal.map(t => esc(t.n.replace('Incantesimi ', ''))).join(', ') : ''}`);
+}
+// spende gli slot del lancio (con i Venti: slot doppi; il 20 ne fa risparmiare uno, W4) e, se l'incantesimo parte,
+// lo mette fra gli attivi. opz: {libero, dissolto}. Restituisce {spesi: [livelli], sup: uso dello slot superiore}
+function eseguiLancio(pg, cl, ctx, s, o, L, stato, nonPrep, opz) {
+  const tal = nonPrep ? [] : talentiScelti(pg, stato);
+  const n = M.slotLancio(nonPrep, statoEff(pg).doppi && L > 0, opz.libero);
+  const spesi = n > 0 ? (M.slotDaSpendere(liberi(cl), nonPrep ? L : stato.slotScelto, n) || []) : [];
+  for (const l of spesi) cl.usati[l] = (cl.usati[l] || 0) + 1;
+  let sup = false;
+  if (!nonPrep && spesi.length) {
     const nec = M.incrementi(tal, s, ctx, stato.intens, L) + (tal.find(t => t.eff === 'portata') ? (stato.portata || 1) - 1 : 0);
-    if (l > nec) cl.sup++;
+    if (stato.slotScelto > nec) { cl.sup++; sup = true; }
   }
   const reag = M.reagente(s.reag);
   if (reag && reag.per !== 'lancio') pg.reag[s.k] = (pg.reag[s.k] || 0) + 1;
-  const li = M.LI(ctx, s);
-  const fD = tal.some(t => t.eff === 'estesi') ? 2 : 1;
+  if (!opz.dissolto) aggiungiAttivo(pg, s, o, M.LI(ctx, s), tal.some(t => t.eff === 'estesi') ? 2 : 1);
+  return { spesi, sup };
+}
+function aggiungiAttivo(pg, s, o, li, fD) {
   const round = M.durataRound(s.d || '', li, fD);
   const conc = M.concentrazioneDurata(s.d);
   if (round != null || conc) pg.attivi.push({ id: uid(), n: o.v || s.n, s: o.s, round, tot: round, conc, I: M.interrompibile(s.d) });
-  salva(); chiudi(); disegna();
-  toast(`Lanciato: <b>${esc(o.v || s.n)}</b>${nonPrep ? ' (2 slot)' : ''}${tal.length ? ' · ' + tal.map(t => esc(t.n.replace('Incantesimi ', ''))).join(', ') : ''}`);
+}
+
+// ---------------------------------------------------------------- Venti della magia (regola opzionale, design v6 §15)
+const ventiOn = pg => !!(pg.venti && pg.venti.on);
+const effVenti = pg => ventiOn(pg) ? pg.venti.effetti : [];
+function statoEff(pg) {
+  const e = { doppi: false, prova12: false, noProva: false, conc: false, malus: 0 };
+  for (const x of effVenti(pg)) { const a = x.app || {}; if (a.doppi) e.doppi = true; if (a.prova12) e.prova12 = true; if (a.noProva) e.noProva = true; if (a.conc) e.conc = true; e.malus += a.malus || 0; }
+  return e;
+}
+const essenzaPronta = pg => ventiOn(pg) && pg.venti.essenza && !pg.venti.effetti.some(e => e.essenza);
+const livelliIncantatore = pg => pg.classi.reduce((a, c) => a + c.livello, 0);
+const UNITA_V = { round: ['round', 'round'], minuti: ['minuto', 'minuti'], ore: ['ora', 'ore'], giorni: ['giorno', 'giorni'], riposi: ['Riposo', 'Riposi'], mesi: ['mese', 'mesi'] };
+
+// passo con un tiro: «Tira» o risultato a mano; dopo il risultato il passo non si ripete (si apre il successivo)
+function passoTiro(titolo, html, max, cb) {
+  apri(titolo, html + `<div class="row" style="margin-top:8px"><button class="pri" id="vTira">Tira 1d${max}</button><input id="vMano" type="number" inputmode="numeric" min="1" max="${max}" placeholder="a mano" style="width:110px;flex:0 0 auto" aria-label="Risultato a mano"><button id="vOk">OK</button></div>`, b => {
+    let fatto = false;
+    const via = n => { if (fatto) return; if (!(n >= 1 && n <= max)) return toast(`Risultato da 1 a ${max}`); fatto = true; cb(n); };
+    $('#vTira', b).onclick = () => via(M.tira('1d' + max).tot);
+    $('#vOk', b).onclick = () => via(Math.floor(+$('#vMano', b).value));
+  });
+}
+
+// lancio di un incantesimo di 1° livello o superiore con i Venti accesi
+function flussoVenti(pg, cl, ctx, s, o, L, stato, nonPrep) {
+  const tal = nonPrep ? [] : talentiScelti(pg, stato);
+  const Lv = tal.some(t => t.eff === 'intensificati') && stato.intens ? stato.intens : L;   // tabella e prova: livello dell'incantesimo (W4)
+  const li = M.LI(ctx, s), forz = [...stato.forza];
+  const fD = tal.some(t => t.eff === 'estesi') ? 2 : 1;
+  ventiTiro({
+    pg, cl, s, nome: o.v || s.n, L: Lv, li, forz, oggetto: false, nonPrep,
+    lancio: opz => eseguiLancio(pg, cl, ctx, s, o, L, stato, nonPrep, opz),
+    parte: estesi => aggiungiAttivo(pg, s, o, li, estesi ? 2 : fD),
+    scheda: meta => apriScheda({ s: o.s, v: o.v, cl, L, metaGratis: meta, forza: forz }),
+  });
+}
+// bacchetta sovraccaricata (riuscita o fallita): tiro dei Venti senza Forzare; il 20 non ha effetto (W1)
+function ventiBacchetta(pg, o, cl, li, cd) {
+  ventiTiro({
+    pg, cl, s: SC[o.s], nome: nomeCon(o), L: o.L, li, forz: [], oggetto: true,
+    lancio: () => ({ spesi: [], sup: false }),
+    parte: () => {},
+    scheda: meta => apriScheda({ s: o.s, v: o.v, L: o.L, liOgg: li, cdOgg: cd, oggetto: true, metaGratis: meta }),
+  });
+}
+function ventiTiro(cx) {
+  const E = statoEff(cx.pg), soglia = M.sogliaVenti(cx.forz, E), malus = M.malusVenti(cx.forz, E);
+  const ess = !cx.oggetto && essenzaPronta(cx.pg);
+  const righe = [];
+  const intro = `<p>${cx.oggetto ? 'Bacchetta sovraccaricata: niente Forzare, il 20 non ha effetto.' : `${ess ? '19–20' : '20'}: slot non consumato${cx.nonPrep ? ' (1 invece di 2)' : ''}.`}
+    ${soglia ? `La prova di incantatore scatta con <b>${soglia === 1 ? '1' : '1–' + soglia}</b>${malus ? `; manifestazione con d12 −${malus}` : ''}.` : 'La prova non scatta (effetto dei Venti).'}</p>
+    ${cx.forz.length ? `<p class="small muted">Forzati: ${cx.forz.map(k => esc(M.potenziamento(k).n)).join(' · ')}</p>` : ''}`;
+  passoTiro('Tiro dei Venti · ' + cx.nome, intro, 20, d20 => {
+    const es = M.esitoVenti(d20, soglia, { essenza: ess, oggetto: cx.oggetto });
+    righe.push(`Tiro dei Venti: <b>${d20}</b>`);
+    if (es.e === 'libero') {
+      const r = cx.lancio({ libero: true });
+      if (es.essenza) {
+        cx.pg.venti.effetti.push({ id: uid(), essenza: true, riposi: 12 });
+        righe.push('19 con l’Essenza di acciaio arcano: conta come 20. L’Essenza è sopita per 12 giorni.');
+      } else righe.push('20: i Venti soffiano con particolare potenza.');
+      righe.push(`Slot ${r.spesi.length ? 'spesi: ' + r.spesi.map(l => l + '°').join(', ') : 'non consumato'}.`);
+      return ventiFine(cx, righe, { parte: true });
+    }
+    if (es.e === 'normale') {
+      cx.lancio({});
+      righe.push(cx.oggetto && d20 === 20 ? 'Con le bacchette il 20 non ha effetto.' : 'Nessun effetto: l’incantesimo funziona normalmente.');
+      return ventiFine(cx, righe, { parte: true });
+    }
+    const cd = M.cdProvaVenti(cx.L), serve = M.servePerCD(cx.li, cd);
+    apri('Prova di incantatore · ' + cx.nome, `<p>I Venti sfuggono al controllo (${d20}). Prova di incantatore: 1d20 + ${cx.li} contro <b>CD ${cd}</b> (15 + livello ${cx.L}).</p><p class="big">${serve <= 1 ? 'riesce sempre' : 'd20 ≥ ' + serve}</p>
+      <div class="row"><button class="pri" id="vTira">Tira</button><button id="vSi">Riuscita</button><button class="warn" id="vNo">Fallita</button></div>`, b => {
+      let fatto = false;
+      const esito = ok => {
+        if (fatto) return; fatto = true;
+        if (ok) { cx.lancio({}); righe.push('Prova di incantatore riuscita: l’incantesimo funziona normalmente.'); return ventiFine(cx, righe, { parte: true }); }
+        const r = cx.lancio({ dissolto: true });
+        righe.push(`Prova di incantatore fallita: l’incantesimo è dissolto${cx.oggetto ? '' : ' e lo slot è speso'}.`);
+        ventiManif(cx, righe, r, malus);
+      };
+      $('#vTira', b).onclick = () => { const t = M.tira('1d20').tot; righe.push(`Prova: 1d20 (${t}) + ${cx.li} = ${t + cx.li} contro CD ${cd}`); esito(t + cx.li >= cd); };
+      $('#vSi', b).onclick = () => esito(true);
+      $('#vNo', b).onclick = () => esito(false);
+    });
+  });
+}
+function ventiManif(cx, righe, r, malus) {
+  passoTiro('Manifestazione · ' + cx.nome, `<p>Tabella degli incantesimi di ${cx.L}° livello${malus ? `, d12 −${malus}` : ''}.</p>`, 12, d12 => {
+    const m = M.manifestazione(cx.L, d12, malus);
+    righe.push(`d12: <b>${d12}</b>${malus ? ` − ${malus} = ${String(d12 - malus).replace('-', '−')}` : ''}${m.sali ? ` → si sale alla tabella del ${m.sali}°` : (d12 - malus < 1 ? ' → al 9° si applica il risultato 1' : '')}`);
+    if (!m.sali) return ventiVoce(cx, righe, r, m.L, m.n);
+    passoTiro('Manifestazione · ' + cx.nome, `<p>Risultato 0 o meno: si tira di nuovo 1d12, senza modificatori, sulla tabella degli incantesimi di ${m.sali}° livello.</p>`, 12, d => {
+      righe.push(`d12 sulla tabella del ${m.sali}°: <b>${d}</b>`);
+      ventiVoce(cx, righe, r, m.sali, d);
+    });
+  });
+}
+// testo di una voce con i danni calcolati sul livello di incantatore
+function htmlVoce(v, li) {
+  if (!v.dv) return colora(esc(v.t));
+  const d = M.danniVenti(v.dv, li);
+  return colora(esc(v.t.slice(0, v.dv.i))) + `<span class="fx">${esc(v.t.slice(v.dv.i, v.dv.j))}</span><span class="calc" data-tira="${esc(d)}">${esc(d)}</span>` + colora(esc(v.t.slice(v.dv.j)));
+}
+function ventiVoce(cx, righe, r, tab, n) {
+  const v = DATI.venti.tab[tab][n - 1], a = v.app || {}, pg = cx.pg, fatti = [];
+  let meta = null, noSlot = !!a.noSlot;
+  if (a.meta) {
+    const ok = a.meta === 'estesi' || M.compatibile({ eff: a.meta }, cx.s);
+    if (ok) meta = a.meta; else if (a.alt === 'estesi') meta = 'estesi'; else if (a.alt === 'noSlot') noSlot = true;
+    if (meta) fatti.push(`L’incantesimo è ${{ estesi: 'esteso', potenziati: 'potenziato', massimizzati: 'massimizzato' }[meta]} senza costi (nella scheda).`);
+    else if (!ok && !noSlot) fatti.push('L’incantesimo non ha valori variabili: niente metamagia.');
+  }
+  if (noSlot) {
+    if (cx.oggetto) fatti.push('Nessuno slot da risparmiare: la bacchetta usa una carica.');
+    else if (r.spesi.length) {
+      const l = r.spesi.pop(); cx.cl.usati[l] = Math.max(0, (cx.cl.usati[l] || 0) - 1);
+      if (r.sup && !r.spesi.length) cx.cl.sup = Math.max(0, cx.cl.sup - 1);
+      fatti.push(`Slot non consumato: torna libero uno slot di ${l}°.`);
+    }
+  }
+  if (a.perdi) {
+    if ((liberi(cx.cl)[a.perdi] || 0) > 0) { cx.cl.usati[a.perdi] = (cx.cl.usati[a.perdi] || 0) + 1; fatti.push(`Speso uno slot di ${a.perdi}° non ancora usato (${esc(cx.cl.classe)}).`); }
+    else fatti.push(`Nessuno slot di ${a.perdi}° libero: nessun effetto.`);
+  }
+  if (v.parte) cx.parte(meta === 'estesi');
+  if (v.dove.includes('attivi')) {
+    const q = M.quantita(v.rit.q), round = M.roundRitardo(q, v.rit.u);
+    pg.attivi.push({ id: uid(), n: `${cx.nome} (Venti ${tab}°, ${n})`, s: SC.indexOf(cx.s), round, tot: round, venti: 'si attiva' });
+    fatti.push(`${v.rit.q} ${UNITA_V[v.rit.u][1]}: ${q} → è fra gli Incantesimi attivi, con il tempo che resta.`);
+  }
+  if (v.dove.includes('effetti')) {
+    const q = v.dur.q ? M.quantita(v.dur.q) : 0, d = M.durataEffetto(v.dur, q);
+    const app = {}; for (const k of ['doppi', 'prova12', 'malus', 'noProva', 'perso', 'conc']) if (a[k]) app[k] = a[k];
+    const dur = v.dur.u === 'sempre' ? 'per sempre' : `${/d/.test(v.dur.q) ? v.dur.q + ' → ' : ''}${q * (v.dur.x || 1)} ${UNITA_V[v.dur.u][q * (v.dur.x || 1) === 1 ? 0 : 1]}`;
+    pg.venti.effetti.push({ id: uid(), L: tab, n, testo: v.t, app, riposi: d.riposi != null ? d.riposi : null, fine: d.fine || null, dur, classe: cx.cl.classe, nota: '' });
+    fatti.push(`Aggiunto agli Effetti dei Venti (${esc(dur)}).`);
+  }
+  const voce = `<div class="card" style="background:var(--surface2)"><h3>Tabella del ${tab}° · ${n}</h3><p style="margin:6px 0 0">${htmlVoce(v, cx.li)}</p></div>`;
+  ventiFine(cx, righe.concat(fatti), { parte: v.parte, meta, voce, dissolto: !v.parte });
+}
+function ventiFine(cx, righe, opz) {
+  salva(); disegna();
+  apri('Venti della magia · ' + cx.nome, `<div style="display:grid;gap:4px">${righe.map(x => `<div>${x}</div>`).join('')}</div>${opz.voce || ''}
+    ${opz.dissolto ? '<p class="cond">L’incantesimo non parte.</p>' : ''}
+    <div class="row">${opz.parte ? '<button class="pri" id="vSch">Apri la scheda</button>' : ''}<button id="vChiudi">Chiudi</button></div>`, b => {
+    b.querySelectorAll('[data-tira]').forEach(x => { if (M.tirabile(x.dataset.tira)) { x.classList.add('tirabile'); x.onclick = () => tiraEMostra(x.dataset.tira); } });
+    const sc = $('#vSch', b); if (sc) sc.onclick = () => cx.scheda(opz.meta);
+    $('#vChiudi', b).onclick = chiudi;
+  });
+}
+// Riposo: gli effetti in giorni scendono di 1, quelli in minuti e ore finiscono (anche con i Venti spenti: il tempo passa)
+function riposoVenti(pg) {
+  if (!pg.venti) return 0;
+  const prima = pg.venti.effetti.length;
+  pg.venti.effetti = pg.venti.effetti.filter(e => {
+    if (e.fine === 'riposo') return false;
+    if (e.riposi != null) { e.riposi--; return e.riposi > 0; }
+    return true;
+  });
+  return prima - pg.venti.effetti.length;
+}
+function riassuntoVenti(pg) {
+  if (!ventiOn(pg) || !pg.venti.effetti.length) return '';
+  const E = statoEff(pg), ess = pg.venti.effetti.find(e => e.essenza);
+  const v = [E.doppi && 'slot doppi', E.prova12 && 'prova con 1–2', E.noProva && 'niente prova', E.malus && `d12 −${E.malus}`, E.conc && 'Concentrazione per lanciare',
+    pg.venti.effetti.some(e => e.app && e.app.perso) && 'slot perso', ess && `Essenza sopita (${ess.riposi} g)`].filter(Boolean);
+  const altri = pg.venti.effetti.length - v.length;
+  return `<div class="small" style="margin-top:6px"><span class="tag">Venti</span> ${v.join(' · ')}${altri > 0 ? `${v.length ? ' · ' : ''}${altri} ${altri === 1 ? 'altro effetto' : 'altri effetti'}` : ''} <span class="muted">(scheda Personaggio)</span></div>`;
+}
+function rigaEffetto(e) {
+  const resta = e.riposi != null ? `resta ${e.riposi} ${e.riposi === 1 ? 'giorno' : 'giorni'} (−1 a ogni Riposo)` : e.fine === 'riposo' ? 'finisce col Riposo' : 'finché non lo termini';
+  if (e.essenza) return `<li><span class="n">Essenza di acciaio arcano sopita<br><span class="small muted">${resta}</span></span><button class="mini" data-vfine="${e.id}">Di nuovo pronta</button></li>`;
+  const a = e.app || {};
+  const ap = [a.doppi && '2 slot a lancio, 3 da non preparato', a.prova12 && 'prova con 1–2', a.malus && `d12 −${a.malus}`, a.noProva && 'niente prova', a.perso && '−1 slot al livello più alto', a.conc && 'promemoria nel lancio'].filter(Boolean);
+  return `<li><span class="n" data-vnota="${e.id}"><b>${e.L}° · ${e.n}</b> ${colora(esc(e.testo))}<br><span class="small muted">${esc(e.dur)} · ${resta}${ap.length ? ' · <b>applicato:</b> ' + ap.join(', ') : ''}${e.nota ? '<br>Nota: ' + esc(e.nota) : ' · tocca per una nota'}</span></span><button class="mini" data-vfine="${e.id}">Termina</button></li>`;
+}
+function cardVenti(pg) {
+  const v = pg.venti;
+  let h = `<div class="card"><h2>Venti della magia</h2><label class="row"><input type="checkbox" id="vOn" ${v.on ? 'checked' : ''}><span class="grow">Venti della magia (regola opzionale)</span></label>
+    <div class="small muted">La sceglie il DM (Vol. 4, Cap. 1). Spenta, l’app non tira i Venti e non mostra niente dei Venti.</div>`;
+  if (v.on) {
+    h += `<label class="row" style="margin-top:8px"><input type="checkbox" id="vEss" ${v.essenza ? 'checked' : ''}><span class="grow">Indosso un’armatura con Essenza di acciaio arcano <span class="muted small">(19–20 al tiro dei Venti, poi sopita per 12 giorni)</span></span></label>
+      <div class="row" style="margin-top:8px"><button class="mini" id="vRegola">Regola e tabelle</button><span class="small muted grow">Forzare i Venti: fino a ${M.maxForzare(livelliIncantatore(pg))} potenziamenti (livello ${livelliIncantatore(pg)})</span></div>
+      <h3 style="margin-top:10px">Effetti dei Venti</h3><ul class="inc">${v.effetti.map(rigaEffetto).join('') || '<li class="muted">Nessuno.</li>'}</ul>`;
+  }
+  return h + '</div>';
+}
+function legaVenti(pg) {
+  $('#vOn').onchange = e => { pg.venti.on = e.target.checked; salva(); disegna(); };
+  const es = $('#vEss'); if (es) es.onchange = e => { pg.venti.essenza = e.target.checked; salva(); disegna(); };
+  const rg = $('#vRegola'); if (rg) rg.onclick = regolaVenti;
+  document.querySelectorAll('[data-vfine]').forEach(e => e.onclick = () => { pg.venti.effetti = pg.venti.effetti.filter(x => x.id !== e.dataset.vfine); salva(); disegna(); });
+  document.querySelectorAll('[data-vnota]').forEach(e => e.onclick = () => {
+    const x = pg.venti.effetti.find(y => y.id === e.dataset.vnota); if (!x) return;
+    apri('Nota sull’effetto', `<p class="small">${colora(esc(x.testo))}</p><textarea id="vN">${esc(x.nota)}</textarea><button class="pri" id="vSalva">Salva</button>`, b => { $('#vSalva', b).onclick = () => { x.nota = $('#vN', b).value; salva(); chiudi(); disegna(); }; });
+  });
+}
+function regolaVenti() {
+  const V = DATI.venti;
+  const pg = PG(), cl = CLS(pg), li = M.LI(ctxDi(pg, cl), null);
+  const tab = L => `<table>${V.tab[L].map(v => `<tr><td>${v.n}</td><td>${htmlVoce(v, li)}</td></tr>`).join('')}</table>`;
+  apri('Venti della magia', `<div class="desc">${V.regola.map(p => p.h ? `<h3 style="margin-top:8px">${esc(p.t)}</h3>` : `<p>${colora(esc(p.t))}</p>`).join('')}
+    <table><tr><td><b>Potenziamento</b></td><td><b>Prova anche con</b></td><td><b>d12</b></td></tr>${V.forzare.map(f => `<tr><td>${esc(f.n)}</td><td>+${f.scatta}</td><td>${f.d12 ? '−' + f.d12 : '—'}</td></tr>`).join('')}</table>
+    <label class="f" style="margin-top:10px">Manifestazioni (danni sul LI ${li} di ${esc(cl.classe)})<select id="vTab">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(L => `<option value="${L}">Incantesimi di ${L}° livello</option>`).join('')}</select></label><div id="vTabB" style="margin-top:6px">${tab(1)}</div></div>`, b => {
+    $('#vTab', b).onchange = e => { $('#vTabB', b).innerHTML = tab(e.target.value); };
+  });
 }
 
 // ---------------------------------------------------------------- scheda «Personaggio»
@@ -390,7 +637,7 @@ function tabPg() {
     <div class="row" style="margin-top:8px"><button id="bNuovo">Nuovo</button><button id="bBackup">Esporta / importa</button><button class="warn" id="bElimina">Elimina</button></div></div>`;
   pg.classi.forEach((cl, i) => { h += cardClasse(pg, cl, i); });
   if (pg.classi.length < 2) h += `<button id="bSeconda">+ Seconda classe incantatrice</button>`;
-  h += `</div><div style="display:grid;gap:12px">${cardBonus(pg)}${cardMeta(pg)}</div></section>`;
+  h += `</div><div style="display:grid;gap:12px">${cardVenti(pg)}${cardBonus(pg)}${cardMeta(pg)}</div></section>`;
   $('#main').innerHTML = h;
   $('#pNome').onchange = e => { pg.nome = e.target.value || 'Senza nome'; salva(); riassunto(); };
   $('#pUcm').onchange = e => { pg.ucm = +e.target.value || 0; salva(); };
@@ -400,7 +647,7 @@ function tabPg() {
   $('#bBackup').onclick = backup;
   const bs = $('#bSeconda'); if (bs) bs.onclick = () => { pg.classi.push(nuovaClasse('Sacerdote')); salva(); disegna(); };
   pg.classi.forEach((cl, i) => legaClasse(pg, cl, i));
-  legaBonus(pg); legaMeta(pg);
+  legaBonus(pg); legaMeta(pg); legaVenti(pg);
 }
 function cardClasse(pg, cl, i) {
   const d = DATI.classi[cl.classe];
@@ -630,7 +877,7 @@ function tabOggi() {
   const tot = M.slot(cl.classe, cl.livello, cl.punteggio, extraSlot(pg, cl));
   const con = M.conosciuti(cl.classe, cl.livello, extraCon(pg, cl));
   let h = `<section class="panel due"><div style="display:grid;gap:12px"><div class="card"><div class="row"><h2 class="grow" style="margin:0">Slot di oggi</h2><button id="bRiposo" class="pri">Riposo</button></div>
-    <div class="row small muted" style="margin-top:6px"><span class="grow">Slot superiore: ${cl.sup}/${M.usiSlotSuperiore(cl.punteggio)} usi</span>${pg.annulla ? '<button class="mini" id="bAnnulla">Annulla ultimo lancio</button>' : ''}<button class="mini" id="bSett">Nuova settimana</button></div>`;
+    <div class="row small muted" style="margin-top:6px"><span class="grow">Slot superiore: ${cl.sup}/${M.usiSlotSuperiore(cl.punteggio)} usi</span>${pg.annulla ? '<button class="mini" id="bAnnulla">Annulla ultimo lancio</button>' : ''}<button class="mini" id="bSett">Nuova settimana</button></div>${riassuntoVenti(pg)}`;
   for (const L of M.livelliMagia(cl.classe)) {
     if (tot[L] == null) continue;
     const u = cl.usati[L] || 0;
@@ -660,23 +907,24 @@ function tabOggi() {
   document.querySelectorAll('[data-dot]').forEach(e => e.onclick = () => { const L = +e.dataset.dot; const u = cl.usati[L] || 0; cl.usati[L] = e.classList.contains('usato') ? Math.max(0, u - 1) : u + 1; salva(); disegna(); });
   document.querySelectorAll('[data-prep]').forEach(e => e.onchange = () => { const L = +e.dataset.l; const a = cl.prep[L] || (cl.prep[L] = []); if (e.checked) a.push(e.dataset.prep); else cl.prep[L] = a.filter(x => x !== e.dataset.prep); salva(); disegna(); });
   document.querySelectorAll('[data-lancia]').forEach(e => e.onclick = () => { const [s, v] = e.dataset.lancia.split('|'); apriScheda({ s: +s, v: v || undefined, cl, L: +e.dataset.l, lancio: true }); });
-  $('#bRiposo').onclick = () => chiedi('Riposo', 'Si azzerano slot, usi dello slot superiore, cariche, blocchi e sovraccarichi delle bacchette e reagenti giornalieri. I preparati restano quelli di ieri.', () => {
+  $('#bRiposo').onclick = () => chiedi('Riposo', 'Si azzerano slot, usi dello slot superiore, cariche, blocchi e sovraccarichi delle bacchette e reagenti giornalieri. I preparati restano quelli di ieri.' + (pg.venti.effetti.length ? ' Gli effetti dei Venti in giorni scendono di 1; quelli in minuti e ore finiscono.' : ''), () => {
+    const finiti = riposoVenti(pg);
     for (const c of pg.classi) { c.usati = {}; c.sup = 0; }
     for (const b of pg.bacchette) { b.bloccata = false; b.noSovr = false; b.cariche = b.max || 1; }
     for (const k in pg.reag) { const s = SC.find(x => x.k === k); const r = s && M.reagente(s.reag); if (!r || r.per === 'giorno') delete pg.reag[k]; }
-    pg.annulla = null; salva(); disegna(); toast('Riposo fatto: scegli i preparati di oggi'); });
+    pg.annulla = null; salva(); disegna(); toast('Riposo fatto: scegli i preparati di oggi' + (finiti ? ` · finiti ${finiti} effetti dei Venti` : '')); });
   $('#bSett').onclick = () => { for (const k in pg.reag) { const s = SC.find(x => x.k === k); const r = s && M.reagente(s.reag); if (r && r.per === 'settimana') delete pg.reag[k]; } salva(); toast('Reagenti settimanali azzerati'); };
   const ba = $('#bAnnulla'); if (ba) ba.onclick = () => { const v = JSON.parse(pg.annulla); Object.assign(pg, v); pg.annulla = null; salva(); disegna(); toast('Ultimo lancio annullato'); };
   legaAttivi(pg); legaConc(pg, cl, ctx);
 }
 function cardAttivi(pg) {
   return `<div class="card"><h2>Incantesimi attivi</h2>${pg.attivi.length ? `<div class="row"><button class="mini" data-pass="1">Round successivo</button><button class="mini" data-pass="10">+1 minuto</button><button class="mini" data-pass="100">+10 minuti</button><button class="mini" data-pass="600">+1 ora</button></div>` : ''}
-   <ul class="inc">${pg.attivi.map(a => `<li><span class="n" data-va="${a.s}">${esc(a.n)}<br><span class="small ${a.round != null && a.round <= 1 ? 'cond' : 'muted'}">${a.round != null ? 'resta ' + esc(M.tempoTesto(a.round)) : ''}${a.conc ? (a.round != null ? ' · ' : '') + 'Concentrazione: azione standard ogni round' : ''}${a.I ? ' · (I)' : ''}</span></span><button class="mini" data-fine="${a.id}">Termina</button></li>`).join('') || '<li class="muted">Nessuno.</li>'}</ul></div>`;
+   <ul class="inc">${pg.attivi.map(a => `<li><span class="n" data-va="${a.s}">${esc(a.n)}<br><span class="small ${a.round != null && a.round <= 1 ? 'cond' : 'muted'}">${a.round != null ? (a.venti ? esc(a.venti) + ' fra ' : 'resta ') + esc(M.tempoTesto(a.round)) : ''}${a.conc ? (a.round != null ? ' · ' : '') + 'Concentrazione: azione standard ogni round' : ''}${a.I ? ' · (I)' : ''}</span></span><button class="mini" data-fine="${a.id}">Termina</button></li>`).join('') || '<li class="muted">Nessuno.</li>'}</ul></div>`;
 }
 function legaAttivi(pg) {
   document.querySelectorAll('[data-pass]').forEach(e => e.onclick = () => {
     const n = +e.dataset.pass, finiti = [];
-    for (const a of pg.attivi) if (a.round != null) { a.round -= n; if (a.round <= 0) finiti.push(a.n); }
+    for (const a of pg.attivi) if (a.round != null) { a.round -= n; if (a.round <= 0) finiti.push((a.venti ? 'ora tocca a ' : '') + a.n); }
     pg.attivi = pg.attivi.filter(a => a.round == null || a.round > 0);
     salva(); disegna(); if (finiti.length) toast('Terminato: ' + finiti.map(esc).join(', '), 3500);
   });
@@ -823,11 +1071,12 @@ function sovraccarica(pg, o, sv, consuma) {
   const scheda = (li, cd) => apriScheda({ s: o.s, v: o.v, L: o.L, liOgg: li, cdOgg: cd, oggetto: true });
   apri('Sovraccarica: ' + nomeCon(o), `<p>Prova di incantatore (${esc(sv.cl.classe)}): 1d20 + ${sv.li} contro <b>CD ${sv.cd}</b> (7 + livello ${o.L} + LI ${sv.li}).</p><p class="big">d20 ≥ ${M.servePerCD(sv.li, sv.cd)}</p>
     <p class="small">Riuscita: LI ${sv.li} e CD ${sv.cdInc}, senza talenti. Fallita: l'incantesimo parte con i valori della bacchetta (LI ${o.li}, CD ${o.cd}) e non si sovraccarica più fino al Riposo. In entrambi i casi si consuma la carica.</p>
-    <div class="avviso">Agli incantesimi sovraccaricati si applica la regola opzionale Maledizione di Tzeentch (Vol. 3): chiedi al DM.</div>
+    ${ventiOn(pg) && o.L > 0 ? '<div class="avviso">Venti della magia: dopo il sovraccarico, riuscito o fallito, si tira il tiro dei Venti (senza Forzare).</div>' : ''}
     <div class="row"><button id="tira">Tira</button><button class="pri" id="ok">Riuscita</button><button id="ko">Fallita</button></div><div id="ris"></div>`, b => {
     $('#tira', b).onclick = () => { const r = M.tira('1d20').tot; const tot = r + sv.li; $('#ris', b).innerHTML = `1d20 (${r}) + ${sv.li} = <b>${tot}</b> → ${tot >= sv.cd ? 'riuscita' : '<span class="cond">fallita</span>'}`; };
-    $('#ok', b).onclick = () => { consuma(); toast(`Sovraccaricata: LI ${sv.li}, CD ${sv.cdInc}`); scheda(sv.li, sv.cdInc); };
-    $('#ko', b).onclick = () => { o.noSovr = true; consuma(); toast('Sovraccarico fallito: valori della bacchetta'); scheda(o.li, o.cd); };
+    const dopo = (li, cd) => ventiOn(pg) && o.L > 0 ? ventiBacchetta(pg, o, sv.cl, li, cd) : scheda(li, cd);
+    $('#ok', b).onclick = () => { consuma(); toast(`Sovraccaricata: LI ${sv.li}, CD ${sv.cdInc}`); dopo(sv.li, sv.cdInc); };
+    $('#ko', b).onclick = () => { o.noSovr = true; consuma(); toast('Sovraccarico fallito: valori della bacchetta'); dopo(o.li, o.cd); };
   });
 }
 
